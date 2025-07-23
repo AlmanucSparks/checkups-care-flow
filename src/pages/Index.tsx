@@ -1,13 +1,43 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import Layout from "@/components/Layout";
+import LoginForm from "@/components/LoginForm";
+import RegisterForm from "@/components/RegisterForm";
+import Dashboard from "@/components/Dashboard";
 
 const Index = () => {
+  const [user, setUser] = useState(null);
+  const [showRegister, setShowRegister] = useState(false);
+
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+  };
+
+  const handleRegister = (userData: any) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
+
+  if (!user) {
+    return showRegister ? (
+      <RegisterForm 
+        onRegister={handleRegister}
+        onSwitchToLogin={() => setShowRegister(false)}
+      />
+    ) : (
+      <LoginForm 
+        onLogin={handleLogin}
+        onSwitchToRegister={() => setShowRegister(true)}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <Layout user={user} onLogout={handleLogout}>
+      <Dashboard user={user} />
+    </Layout>
   );
 };
 
