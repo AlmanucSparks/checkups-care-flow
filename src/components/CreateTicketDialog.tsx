@@ -37,17 +37,10 @@ export default function CreateTicketDialog({ open, onClose, onSubmit }: CreateTi
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      onSubmit(formData);
-      toast({
-        title: "Ticket created",
-        description: "Your support ticket has been submitted successfully.",
-      });
-      setFormData({ title: "", description: "", priority: "Medium" });
-      setIsLoading(false);
-    }, 500);
+    onSubmit(formData);
+    setFormData({ title: "", description: "", priority: "Medium" });
+    setIsLoading(false);
+    onClose();
   };
 
   return (

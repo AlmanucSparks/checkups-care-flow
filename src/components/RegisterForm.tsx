@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const DESIGNATIONS = [
   "Doctor",
@@ -28,11 +29,10 @@ const BRANCHES = [
 ];
 
 interface RegisterFormProps {
-  onRegister: (user: any) => void;
   onSwitchToLogin: () => void;
 }
 
-export default function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps) {
+export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -42,32 +42,44 @@ export default function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFo
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate registration
-    setTimeout(() => {
-      if (formData.name && formData.email && formData.password && formData.designation && formData.branch) {
-        const newUser = {
-          id: Date.now().toString(),
-          ...formData
-        };
-        onRegister(newUser);
-        toast({
-          title: "Registration successful!",
-          description: "Welcome to Checkups IT Support Center.",
-        });
-      } else {
-        toast({
-          title: "Registration failed",
-          description: "Please fill in all required fields.",
-          variant: "destructive",
-        });
-      }
+    if (!formData.name || !formData.email || !formData.password || !formData.designation || !formData.branch) {
+      toast({
+        title: "Registration failed",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+
+    const { error } = await signUp(
+      formData.email,
+      formData.password,
+      formData.name,
+      formData.designation,
+      formData.branch
+    );
+
+    if (error) {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Registration successful!",
+        description: "Please check your email to confirm your account.",
+      });
+      setFormData({ name: "", email: "", password: "", designation: "", branch: "" });
+    }
+    setIsLoading(false);
   };
 
   return (

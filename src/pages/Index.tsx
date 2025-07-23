@@ -3,41 +3,36 @@ import Layout from "@/components/Layout";
 import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
 import Dashboard from "@/components/Dashboard";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
-const Index = () => {
-  const [user, setUser] = useState(null);
+function AppContent() {
   const [showRegister, setShowRegister] = useState(false);
+  const { user, profile } = useAuth();
 
-  const handleLogin = (userData: any) => {
-    setUser(userData);
-  };
-
-  const handleRegister = (userData: any) => {
-    setUser(userData);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-  };
-
-  if (!user) {
+  if (!user || !profile) {
     return showRegister ? (
       <RegisterForm 
-        onRegister={handleRegister}
         onSwitchToLogin={() => setShowRegister(false)}
       />
     ) : (
       <LoginForm 
-        onLogin={handleLogin}
         onSwitchToRegister={() => setShowRegister(true)}
       />
     );
   }
 
   return (
-    <Layout user={user} onLogout={handleLogout}>
-      <Dashboard user={user} />
+    <Layout>
+      <Dashboard />
     </Layout>
+  );
+}
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

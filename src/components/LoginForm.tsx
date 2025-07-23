@@ -4,46 +4,38 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LoginFormProps {
-  onLogin: (user: any) => void;
   onSwitchToRegister: () => void;
 }
 
-export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
+export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication
-    setTimeout(() => {
-      if (email && password) {
-        const mockUser = {
-          id: "1",
-          name: email.split("@")[0],
-          email,
-          designation: email.includes("it") ? "IT" : "Doctor",
-          branch: "Lusaka"
-        };
-        onLogin(mockUser);
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in.",
-        });
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Please check your credentials.",
-          variant: "destructive",
-        });
-      }
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
+    }
+    setIsLoading(false);
   };
 
   return (

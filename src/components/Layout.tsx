@@ -1,19 +1,14 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Home, Ticket, Settings } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LayoutProps {
   children: ReactNode;
-  user?: {
-    id: string;
-    name: string;
-    designation: string;
-    branch: string;
-  } | null;
-  onLogout?: () => void;
 }
 
-export default function Layout({ children, user, onLogout }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
+  const { profile, signOut } = useAuth();
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -32,13 +27,16 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
               </div>
             </div>
             
-            {user && (
+            {profile && (
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.designation} • {user.branch}</p>
+                  <p className="text-sm font-medium">{profile.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile.designation} • {profile.branch}
+                    {profile.is_admin && " • Admin"}
+                  </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={onLogout}>
+                <Button variant="outline" size="sm" onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
@@ -49,7 +47,7 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
       </header>
 
       {/* Navigation */}
-      {user && (
+      {profile && (
         <nav className="border-b bg-card">
           <div className="container mx-auto px-4">
             <div className="flex space-x-6">
@@ -61,7 +59,7 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
                 <Ticket className="h-4 w-4" />
                 <span>My Tickets</span>
               </Button>
-              {user.designation === 'IT' && (
+              {(profile.designation === 'IT' || profile.is_admin) && (
                 <Button variant="ghost" size="sm" className="flex items-center space-x-2 py-4">
                   <Settings className="h-4 w-4" />
                   <span>IT Management</span>
