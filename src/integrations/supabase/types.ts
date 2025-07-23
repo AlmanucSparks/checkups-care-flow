@@ -14,7 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      comments: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          message: string
+          ticket_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          message: string
+          ticket_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          branch: string
+          created_at: string
+          designation: string
+          email: string
+          id: string
+          is_admin: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          branch: string
+          created_at?: string
+          designation: string
+          email: string
+          id?: string
+          is_admin?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          designation?: string
+          email?: string
+          id?: string
+          is_admin?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
