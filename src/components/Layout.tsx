@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Home, Ticket, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Link, useLocation } from "react-router-dom";
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
+  const location = useLocation();
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -51,18 +53,39 @@ export default function Layout({ children }: LayoutProps) {
         <nav className="border-b bg-card">
           <div className="container mx-auto px-4">
             <div className="flex space-x-6">
-              <Button variant="ghost" size="sm" className="flex items-center space-x-2 py-4">
-                <Home className="h-4 w-4" />
-                <span>Dashboard</span>
+              <Button 
+                variant={location.pathname === "/" ? "secondary" : "ghost"} 
+                size="sm" 
+                className="flex items-center space-x-2 py-4"
+                asChild
+              >
+                <Link to="/">
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
               </Button>
-              <Button variant="ghost" size="sm" className="flex items-center space-x-2 py-4">
-                <Ticket className="h-4 w-4" />
-                <span>My Tickets</span>
+              <Button 
+                variant={location.pathname === "/my-tickets" ? "secondary" : "ghost"} 
+                size="sm" 
+                className="flex items-center space-x-2 py-4"
+                asChild
+              >
+                <Link to="/my-tickets">
+                  <Ticket className="h-4 w-4" />
+                  <span>My Tickets</span>
+                </Link>
               </Button>
               {(profile.designation === 'IT' || profile.is_admin) && (
-                <Button variant="ghost" size="sm" className="flex items-center space-x-2 py-4">
-                  <Settings className="h-4 w-4" />
-                  <span>IT Management</span>
+                <Button 
+                  variant={location.pathname === "/it-management" ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="flex items-center space-x-2 py-4"
+                  asChild
+                >
+                  <Link to="/it-management">
+                    <Settings className="h-4 w-4" />
+                    <span>IT Management</span>
+                  </Link>
                 </Button>
               )}
             </div>

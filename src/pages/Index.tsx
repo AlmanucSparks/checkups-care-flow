@@ -2,7 +2,7 @@ import { useState } from "react";
 import Layout from "@/components/Layout";
 import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
-import Dashboard from "@/components/Dashboard";
+import Dashboard from "@/pages/Dashboard";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 function AppContent() {
