@@ -9,7 +9,7 @@ interface Profile {
   name: string;
   email: string;
   phone_number?: string;
-  designation: string[];
+  designation: string[]; // Corrected to be an array of strings
   branch: string;
   is_admin: boolean;
 }
@@ -34,14 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          setTimeout(async () => {
-            await fetchProfile(session.user.id);
-          }, 0);
+          fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }

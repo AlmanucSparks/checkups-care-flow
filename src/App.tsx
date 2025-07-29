@@ -15,7 +15,7 @@ import Dashboard from "./pages/Dashboard";
 
 const queryClient = new QueryClient();
 
-function AppContent() {
+function AppRoutes() {
   const { user, profile } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
 
@@ -56,7 +56,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppContent />
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
