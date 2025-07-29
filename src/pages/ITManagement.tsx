@@ -60,7 +60,7 @@ export default function ITManagement() {
   const DESIGNATIONS = ["Intern", "Junior Developer", "Senior Developer", "IT Manager", "System Administrator", "Help Desk", "Network Engineer", "Data Scientist"];
 
   useEffect(() => {
-    if (profile?.designation.includes("IT") || profile?.is_admin) {
+    if (profile?.is_admin) {
       fetchUsers();
       fetchTickets();
     }
@@ -192,10 +192,10 @@ export default function ITManagement() {
     { name: 'Resolved', value: ticketStats.resolved },
   ];
 
-  if (!profile?.designation.includes("IT") && !profile?.is_admin) {
+  if (!profile?.is_admin) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Access denied. This page is only available to IT staff and administrators.</p>
+        <p className="text-muted-foreground">Access denied. This page is only available to administrators.</p>
       </div>
     );
   }
@@ -204,15 +204,12 @@ export default function ITManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">IT Management</h1>
-        {profile?.is_admin && (
-          <Button onClick={() => setShowCreateUserDialog(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
-        )}
+        <Button onClick={() => setShowCreateUserDialog(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add User
+        </Button>
       </div>
 
-      {/* Visionary Feature: Ticket Status Visualization */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><BarChart2 className="h-5 w-5" />Ticket Status Overview</CardTitle>
@@ -234,7 +231,6 @@ export default function ITManagement() {
         </CardContent>
       </Card>
 
-      {/* User Management Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -243,7 +239,6 @@ export default function ITManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Filters */}
           <div className="flex gap-4 items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -278,7 +273,6 @@ export default function ITManagement() {
             </Select>
           </div>
 
-          {/* Users List */}
           <div className="grid gap-4">
             {filteredUsers.map((user) => (
               <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -293,23 +287,20 @@ export default function ITManagement() {
                     <Badge variant="secondary">{user.branch}</Badge>
                   </div>
                 </div>
-                {profile?.is_admin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditUser(user)}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEditUser(user)}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Ticket Management Section */}
       <Card>
         <CardHeader>
           <CardTitle>Ticket Management</CardTitle>

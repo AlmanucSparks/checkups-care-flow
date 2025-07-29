@@ -42,7 +42,9 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/my-tickets" element={<MyTickets />} />
-        <Route path="/it-management" element={<ITManagement />} />
+        {profile.is_admin && (
+          <Route path="/it-management" element={<ITManagement />} />
+        )}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
