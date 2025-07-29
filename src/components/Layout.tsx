@@ -12,7 +12,9 @@ export default function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
   const location = useLocation();
 
+  // This guard is crucial. It ensures profile is loaded before rendering the layout.
   if (!profile) {
+    // You can optionally render a loading spinner here while the profile is being fetched.
     return <>{children}</>;
   }
 
