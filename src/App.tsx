@@ -2,8 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import Index from "./pages/Index";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MyTickets from "./pages/MyTickets";
 import ITManagement from "./pages/ITManagement";
 import NotFound from "./pages/NotFound";
@@ -19,20 +18,22 @@ const queryClient = new QueryClient();
 function AppContent() {
   const { user, profile } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
-  const location = useLocation();
 
   if (!user || !profile) {
-    if (location.pathname !== "/") {
-      return showRegister ? (
-        <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />
-      ) : (
-        <LoginForm onSwitchToRegister={() => setShowRegister(true)} />
-      );
-    }
-    return showRegister ? (
-      <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />
-    ) : (
-      <LoginForm onSwitchToRegister={() => setShowRegister(true)} />
+    return (
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            showRegister ? (
+              <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />
+            ) : (
+              <LoginForm onSwitchToRegister={() => setShowRegister(true)} />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
     );
   }
 
