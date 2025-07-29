@@ -37,6 +37,11 @@ export default function CreateTicketDialog({ open, onClose, onSubmit }: CreateTi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+        toast({ title: "Error", description: "You must be logged in to create a ticket.", variant: "destructive" });
+        return;
+    }
+
     if (!formData.title.trim() || !formData.description.trim()) {
       toast({
         title: "Missing information",
@@ -51,7 +56,7 @@ export default function CreateTicketDialog({ open, onClose, onSubmit }: CreateTi
 
     if (error) {
       toast({ title: "Error", description: "Failed to create ticket", variant: "destructive" });
-    } else if (file) {
+    } else if (file && data) {
       const newTicket = data[0];
       const { error: uploadError } = await supabase.storage.from('ticket-attachments').upload(`${newTicket.id}/${file.name}`, file);
 

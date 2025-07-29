@@ -38,7 +38,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="text-right">
                 <p className="text-sm font-medium">{profile.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {profile.designation} • {profile.branch}
+                  {profile.designation.join(', ')} • {profile.branch}
                   {profile.is_admin && " • Admin"}
                 </p>
               </div>
@@ -77,7 +77,7 @@ export default function Layout({ children }: LayoutProps) {
                 <span>My Tickets</span>
               </Link>
             </Button>
-            {(profile.designation === 'IT' || profile.is_admin) && (
+            {(profile.designation.includes('IT') || profile.is_admin) && (
               <Button 
                 variant={location.pathname === "/it-management" ? "secondary" : "ghost"} 
                 size="sm" 
