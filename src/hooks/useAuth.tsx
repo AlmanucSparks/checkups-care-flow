@@ -9,7 +9,7 @@ interface Profile {
   name: string;
   email: string;
   phone_number?: string;
-  designation: string[]; // Corrected to be an array of strings
+  designation: string[];
   branch: string;
   is_admin: boolean;
 }
@@ -18,6 +18,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
+  loading: boolean; // Add loading state
   signUp: (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -30,29 +31,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true); // Initialize loading to true
   const { toast } = useToast();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
         if (session?.user) {
-          fetchProfile(session.user.id);
+          await fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
+        setLoading(false); // Set loading to false after auth state is determined
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
       }
-    });
+      setLoading(false); // Set loading to false after initial session is fetched
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -67,18 +73,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error fetching profile:', error);
+        setProfile(null)
         return;
       }
 
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null)
     }
   };
 
+
   const signUp = async (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -141,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       session,
+      loading, // Pass loading state to consumers
       signUp,
       signIn,
       signOut,

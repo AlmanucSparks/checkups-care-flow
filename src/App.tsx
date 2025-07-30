@@ -12,12 +12,32 @@ import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
 import { useState } from "react";
 import Dashboard from "./pages/Dashboard";
+import { Skeleton } from "./components/ui/skeleton";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth(); // Destructure loading state
   const [showRegister, setShowRegister] = useState(false);
+
+  // If loading, show a loading indicator
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-md space-y-8">
+            <Skeleton className="h-20 w-auto mx-auto mb-6" />
+            <Skeleton className="h-8 w-3/4 mx-auto" />
+            <Skeleton className="h-6 w-1/2 mx-auto" />
+             <div className="space-y-4 pt-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+             </div>
+        </div>
+      </div>
+    );
+  }
+
 
   if (!user || !profile) {
     return (
