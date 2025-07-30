@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Home, Ticket, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
+import { Skeleton } from "./ui/skeleton";
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,10 +13,34 @@ export default function Layout({ children }: LayoutProps) {
   const { profile, signOut } = useAuth();
   const location = useLocation();
 
-  // This guard is crucial. It ensures profile is loaded before rendering the layout.
   if (!profile) {
-    // You can optionally render a loading spinner here while the profile is being fetched.
-    return <>{children}</>;
+    return (
+      <div className="min-h-screen bg-background">
+          <header className="border-b bg-card shadow-sm">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                 <div className="flex items-center space-x-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                     <div>
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-32 mt-1" />
+                     </div>
+                 </div>
+                 <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                       <Skeleton className="h-4 w-24" />
+                       <Skeleton className="h-3 w-32 mt-1" />
+                    </div>
+                     <Skeleton className="h-9 w-24" />
+                 </div>
+              </div>
+            </div>
+          </header>
+          <main className="container mx-auto px-4 py-8">
+              {children}
+          </main>
+      </div>
+    )
   }
 
   return (
@@ -40,7 +65,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="text-right">
                 <p className="text-sm font-medium">{profile.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {profile.designation.join(', ')} • {profile.branch}
+                  {Array.isArray(profile.designation) ? profile.designation.join(', ') : profile.designation} • {profile.branch}
                   {profile.is_admin && " • Admin"}
                 </p>
               </div>
@@ -79,7 +104,7 @@ export default function Layout({ children }: LayoutProps) {
                 <span>My Tickets</span>
               </Link>
             </Button>
-            {(profile.designation.includes('IT') || profile.is_admin) && (
+            {(Array.isArray(profile.designation) && profile.designation.includes('IT') || profile.is_admin) && (
               <Button 
                 variant={location.pathname === "/it-management" ? "secondary" : "ghost"} 
                 size="sm" 

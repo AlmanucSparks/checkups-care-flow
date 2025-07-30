@@ -17,10 +17,9 @@ import { Skeleton } from "./components/ui/skeleton";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { user, profile, loading } = useAuth(); // Destructure loading state
+  const { user, loading } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
 
-  // If loading, show a loading indicator
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -38,8 +37,7 @@ function AppRoutes() {
     );
   }
 
-
-  if (!user || !profile) {
+  if (!user) {
     return (
       <Routes>
         <Route
@@ -59,16 +57,49 @@ function AppRoutes() {
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/my-tickets" element={<MyTickets />} />
-        {profile.is_admin && (
-          <Route path="/it-management" element={<ITManagement />} />
-        )}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <AppContent />
     </Layout>
   );
+}
+
+function AppContent() {
+    const { profile } = useAuth();
+
+    if (!profile) {
+        return (
+             <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-64 mt-2" />
+                    </div>
+                    <div className="flex gap-2">
+                         <Skeleton className="h-10 w-24" />
+                         <Skeleton className="h-10 w-32" />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                    <Skeleton className="h-24" />
+                </div>
+             </div>
+        )
+    }
+
+    return (
+         <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/my-tickets" element={<MyTickets />} />
+            {profile.is_admin && (
+              <Route path="/it-management" element={<ITManagement />} />
+            )}
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    )
 }
 
 const App = () => (

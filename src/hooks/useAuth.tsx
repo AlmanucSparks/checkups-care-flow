@@ -18,7 +18,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
-  loading: boolean; // Add loading state
+  loading: boolean;
   signUp: (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -31,36 +31,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true); // Initialize loading to true
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
+    setLoading(true);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
+        const currentUser = session?.user;
+        setUser(currentUser ?? null);
+        if (currentUser) {
+          await fetchProfile(currentUser.id);
         } else {
           setProfile(null);
         }
-        setLoading(false); // Set loading to false after auth state is determined
+        setLoading(false);
       }
     );
 
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      }
-      setLoading(false); // Set loading to false after initial session is fetched
+    return () => {
+      subscription.unsubscribe();
     };
-
-    initializeAuth();
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -83,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null)
     }
   };
-
 
   const signUp = async (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -150,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       session,
-      loading, // Pass loading state to consumers
+      loading,
       signUp,
       signIn,
       signOut,
