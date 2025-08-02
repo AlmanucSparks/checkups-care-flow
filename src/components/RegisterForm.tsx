@@ -22,10 +22,10 @@ const DESIGNATIONS = [
 ];
 
 const BRANCHES = [
-  "Lusaka",
-  "Ga",
+  "LUSAKA",
+  "GA",
   "JKIA",
-  "Industrial Park"
+  "EPZ"
 ];
 
 interface RegisterFormProps {

@@ -20,11 +20,10 @@ const DESIGNATIONS = [
 ];
 
 const BRANCHES = [
-  "Lusaka",
-  "Kitwe", 
-  "Ndola",
-  "Livingstone",
-  "Chipata"
+  "LUSAKA",
+  "GA",
+  "JKIA",
+  "EPZ"
 ];
 
 interface User {

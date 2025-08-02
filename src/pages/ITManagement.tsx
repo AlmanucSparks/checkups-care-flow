@@ -10,6 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Search, Settings, AlertCircle, Clock, CheckCircle } from "lucide-react";
 import CreateUserDialog from "@/components/CreateUserDialog";
 import EditUserDialog from "@/components/EditUserDialog";
+import ResetPasswordDialog from "@/components/ResetPasswordDialog";
+import UserActivityDialog from "@/components/UserActivityDialog";
+import BulkActionsDialog from "@/components/BulkActionsDialog";
 
 interface User {
   id: string;
@@ -47,11 +50,17 @@ export default function ITManagement() {
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+  const [showUserActivityDialog, setShowUserActivityDialog] = useState(false);
+  const [showBulkActionsDialog, setShowBulkActionsDialog] = useState(false);
+  const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterDesignation, setFilterDesignation] = useState("all");
+  const [ticketSearchTerm, setTicketSearchTerm] = useState("");
+  const [ticketStatusFilter, setTicketStatusFilter] = useState("all");
 
-  const BRANCHES = ["Lusaka", "Kitwe", "Ndola", "Livingstone", "Chipata"];
+  const BRANCHES = ["LUSAKA", "GA", "JKIA", "EPZ"];
   const DESIGNATIONS = ["Intern", "Junior Developer", "Senior Developer", "IT Manager", "System Administrator", "Help Desk", "Network Engineer"];
 
   useEffect(() => {
@@ -146,6 +155,32 @@ export default function ITManagement() {
     setShowEditUserDialog(true);
   };
 
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user);
+    setShowResetPasswordDialog(true);
+  };
+
+  const handleViewActivity = (user: User) => {
+    setSelectedUser(user);
+    setShowUserActivityDialog(true);
+  };
+
+  const handleTicketSelect = (ticketId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedTickets(prev => [...prev, ticketId]);
+    } else {
+      setSelectedTickets(prev => prev.filter(id => id !== ticketId));
+    }
+  };
+
+  const handleSelectAllTickets = (checked: boolean) => {
+    if (checked) {
+      setSelectedTickets(filteredTickets.map(t => t.id));
+    } else {
+      setSelectedTickets([]);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -153,6 +188,13 @@ export default function ITManagement() {
     const matchesDesignation = filterDesignation === "all" || user.designation === filterDesignation;
     
     return matchesSearch && matchesBranch && matchesDesignation;
+  });
+
+  const filteredTickets = tickets.filter(ticket => {
+    const matchesSearch = ticket.title.toLowerCase().includes(ticketSearchTerm.toLowerCase()) ||
+                         ticket.description.toLowerCase().includes(ticketSearchTerm.toLowerCase());
+    const matchesStatus = ticketStatusFilter === "all" || ticket.status === ticketStatusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const getStatusIcon = (status: string) => {
@@ -259,14 +301,30 @@ export default function ITManagement() {
                     <Badge variant="secondary">{user.branch}</Badge>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditUser(user)}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewActivity(user)}
+                  >
+                    Activity
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResetPassword(user)}
+                  >
+                    Reset Password
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditUser(user)}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

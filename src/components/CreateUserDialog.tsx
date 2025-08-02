@@ -29,10 +29,10 @@ const DESIGNATIONS = [
 ];
 
 const BRANCHES = [
-  "Lusaka",
-  "Ga",
+  "LUSAKA",
+  "GA",
   "JKIA",
-  "Industrial Park"
+  "EPZ"
 ];
 
 export default function CreateUserDialog({ open, onClose, onSuccess }: CreateUserDialogProps) {
