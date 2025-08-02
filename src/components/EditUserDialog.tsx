@@ -4,22 +4,35 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 
 const DESIGNATIONS = [
-  "Intern", "Junior Developer", "Senior Developer", "IT Manager",
-  "System Administrator", "Help Desk", "Network Engineer", "IT", "Data Scientist"
+  "Intern",
+  "Junior Developer", 
+  "Senior Developer",
+  "IT Manager",
+  "System Administrator",
+  "Help Desk",
+  "Network Engineer",
+  "IT"
 ];
 
-const BRANCHES = ["Lusaka", "Kitwe", "Ndola", "Livingstone", "Chipata"];
+const BRANCHES = [
+  "Lusaka",
+  "Kitwe", 
+  "Ndola",
+  "Livingstone",
+  "Chipata"
+];
 
 interface User {
   id: string;
   user_id: string;
   name: string;
   email: string;
-  designation: string[];
+  designation: string;
   branch: string;
   is_admin: boolean;
 }
@@ -42,19 +55,10 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
     is_admin: user.is_admin,
   });
 
-  const handleDesignationChange = (designation: string) => {
-    setFormData(prev => {
-      const newDesignations = prev.designation.includes(designation)
-        ? prev.designation.filter(d => d !== designation)
-        : [...prev.designation, designation];
-      return { ...prev, designation: newDesignations };
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || formData.designation.length === 0 || !formData.branch) {
+    if (!formData.name || !formData.email || !formData.designation || !formData.branch) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -136,21 +140,43 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
           </div>
 
           <div className="space-y-2">
-            <Label>Designation</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {DESIGNATIONS.map((designation) => (
-                <div key={designation} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={designation}
-                    checked={formData.designation.includes(designation)}
-                    onCheckedChange={() => handleDesignationChange(designation)}
-                  />
-                  <Label htmlFor={designation}>{designation}</Label>
-                </div>
-              ))}
-            </div>
+            <Label htmlFor="designation">Designation</Label>
+            <Select
+              value={formData.designation}
+              onValueChange={(value) => setFormData({ ...formData, designation: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select designation" />
+              </SelectTrigger>
+              <SelectContent>
+                {DESIGNATIONS.map((designation) => (
+                  <SelectItem key={designation} value={designation}>
+                    {designation}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
+
+          <div className="space-y-2">
+            <Label htmlFor="branch">Branch</Label>
+            <Select
+              value={formData.branch}
+              onValueChange={(value) => setFormData({ ...formData, branch: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {BRANCHES.map((branch) => (
+                  <SelectItem key={branch} value={branch}>
+                    {branch}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="is_admin"

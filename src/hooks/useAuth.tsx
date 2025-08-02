@@ -8,8 +8,7 @@ interface Profile {
   user_id: string;
   name: string;
   email: string;
-  phone_number?: string;
-  designation: string[];
+  designation: string;
   branch: string;
   is_admin: boolean;
 }
@@ -18,10 +17,10 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
-  signUp: (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string, designation: string, branch: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  createUserByAdmin: (email: string, password: string, name: string, designation: string[], branch: string, isAdmin?: boolean) => Promise<{ error: any }>;
+  createUserByAdmin: (email: string, password: string, name: string, designation: string, branch: string, isAdmin?: boolean) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,12 +32,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Defer profile fetching to avoid deadlock
           setTimeout(async () => {
             await fetchProfile(session.user.id);
           }, 0);
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -78,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => {
+  const signUp = async (email: string, password: string, name: string, designation: string, branch: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -89,8 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           name,
           designation,
-          branch,
-          phone_number
+          branch
         }
       }
     });
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
-  const createUserByAdmin = async (email: string, password: string, name: string, designation: string[], branch: string, isAdmin = false) => {
+  const createUserByAdmin = async (email: string, password: string, name: string, designation: string, branch: string, isAdmin = false) => {
     if (!profile?.is_admin) {
       return { error: { message: 'Unauthorized: Only admins can create users' } };
     }
