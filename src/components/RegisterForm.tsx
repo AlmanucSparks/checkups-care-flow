@@ -8,25 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 const DESIGNATIONS = [
-  "Doctor",
-  "Nurse",
-  "Pharmacist",
-  "Dispatch",
-  "Xpresscheck",
-  "Accounts",
-  "Customer Care",
-  "Claims",
-  "CDM",
-  "IT",
-  "Intern"
+  "Doctor", "Nurse", "Pharmacist", "Dispatch", "Xpresscheck",
+  "Accounts", "Customer Care", "Claims", "CDM", "IT", "Intern", "Data Scientist"
 ];
 
-const BRANCHES = [
-  "Lusaka",
-  "Ga",
-  "JKIA",
-  "Industrial Park"
-];
+const BRANCHES = ["Lusaka", "Ga", "JKIA", "Industrial Park"];
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
@@ -37,6 +23,7 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     name: "",
     email: "",
     password: "",
+    phone_number: "",
     designation: "",
     branch: ""
   });
@@ -62,8 +49,9 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       formData.email,
       formData.password,
       formData.name,
-      formData.designation,
-      formData.branch
+      [formData.designation],
+      formData.branch,
+      formData.phone_number
     );
 
     if (error) {
@@ -77,7 +65,7 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         title: "Registration successful!",
         description: "Please check your email to confirm your account.",
       });
-      setFormData({ name: "", email: "", password: "", designation: "", branch: "" });
+      setFormData({ name: "", email: "", password: "", phone_number: "", designation: "", branch: "" });
     }
     setIsLoading(false);
   };
@@ -136,6 +124,16 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  placeholder="+1234567890"
+                  value={formData.phone_number}
+                  onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="designation">Designation</Label>
                 <Select onValueChange={(value) => setFormData({...formData, designation: value})}>
