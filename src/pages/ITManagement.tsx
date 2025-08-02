@@ -1,23 +1,22 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Search, Settings, AlertCircle, Clock, CheckCircle, BarChart2 } from "lucide-react";
+import { Users, UserPlus, Search, Settings, AlertCircle, Clock, CheckCircle } from "lucide-react";
 import CreateUserDialog from "@/components/CreateUserDialog";
 import EditUserDialog from "@/components/EditUserDialog";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 interface User {
   id: string;
   user_id: string;
   name: string;
   email: string;
-  designation: string[];
+  designation: string;
   branch: string;
   is_admin: boolean;
   created_at: string;
@@ -40,13 +39,11 @@ interface Ticket {
   };
 }
 
-
 export default function ITManagement() {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [ticketStats, setTicketStats] = useState({ open: 0, inProgress: 0, resolved: 0 });
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -54,15 +51,13 @@ export default function ITManagement() {
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterDesignation, setFilterDesignation] = useState("all");
 
-  const COLORS = ['#FF8042', '#0088FE', '#00C49F'];
-
   const BRANCHES = ["Lusaka", "Kitwe", "Ndola", "Livingstone", "Chipata"];
-  const DESIGNATIONS = ["Intern", "Junior Developer", "Senior Developer", "IT Manager", "System Administrator", "Help Desk", "Network Engineer", "Data Scientist"];
+  const DESIGNATIONS = ["Intern", "Junior Developer", "Senior Developer", "IT Manager", "System Administrator", "Help Desk", "Network Engineer"];
 
   useEffect(() => {
-    if (profile?.is_admin) {
+    if (profile?.designation === "IT" || profile?.is_admin) {
       fetchUsers();
-      fetchTickets();
+      fetchUnassignedTickets();
     }
   }, [profile]);
 
@@ -83,23 +78,24 @@ export default function ITManagement() {
     }
   };
 
-  const fetchTickets = async () => {
+  const fetchUnassignedTickets = async () => {
     const { data, error } = await supabase
       .from("tickets")
-      .select(`*, creator:profiles!tickets_created_by_fkey(name), assignee:profiles!tickets_assigned_to_fkey(name)`)
+      .select(`
+        *,
+        creator:profiles!tickets_created_by_fkey(name),
+        assignee:profiles!tickets_assigned_to_fkey(name)
+      `)
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast({ title: "Error", description: "Failed to fetch tickets", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to fetch tickets",
+        variant: "destructive",
+      });
     } else {
-      const ticketData = data || [];
-      setTickets(ticketData);
-      const stats = {
-        open: ticketData.filter(t => t.status === 'Open').length,
-        inProgress: ticketData.filter(t => t.status === 'In Progress').length,
-        resolved: ticketData.filter(t => t.status === 'Resolved').length
-      };
-      setTicketStats(stats);
+      setTickets(data || []);
     }
   };
 
@@ -120,7 +116,7 @@ export default function ITManagement() {
         title: "Success",
         description: "Ticket assigned successfully",
       });
-      fetchTickets();
+      fetchUnassignedTickets();
     }
   };
 
@@ -141,7 +137,7 @@ export default function ITManagement() {
         title: "Success",
         description: "Ticket status updated successfully",
       });
-      fetchTickets();
+      fetchUnassignedTickets();
     }
   };
 
@@ -154,7 +150,7 @@ export default function ITManagement() {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesBranch = filterBranch === "all" || user.branch === filterBranch;
-    const matchesDesignation = filterDesignation === "all" || user.designation.includes(filterDesignation);
+    const matchesDesignation = filterDesignation === "all" || user.designation === filterDesignation;
     
     return matchesSearch && matchesBranch && matchesDesignation;
   });
@@ -186,16 +182,10 @@ export default function ITManagement() {
     }
   };
 
-  const ticketData = [
-    { name: 'Open', value: ticketStats.open },
-    { name: 'In Progress', value: ticketStats.inProgress },
-    { name: 'Resolved', value: ticketStats.resolved },
-  ];
-
-  if (!profile?.is_admin) {
+  if (profile?.designation !== "IT" && !profile?.is_admin) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Access denied. This page is only available to administrators.</p>
+        <p className="text-muted-foreground">Access denied. This page is only available to IT staff and administrators.</p>
       </div>
     );
   }
@@ -210,27 +200,7 @@ export default function ITManagement() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><BarChart2 className="h-5 w-5" />Ticket Status Overview</CardTitle>
-          <CardDescription>A visual breakdown of current ticket statuses.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={ticketData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
-                  {ticketData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* User Management Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -239,6 +209,7 @@ export default function ITManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Filters */}
           <div className="flex gap-4 items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -273,6 +244,7 @@ export default function ITManagement() {
             </Select>
           </div>
 
+          {/* Users List */}
           <div className="grid gap-4">
             {filteredUsers.map((user) => (
               <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -283,7 +255,7 @@ export default function ITManagement() {
                   </div>
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                   <div className="flex gap-2">
-                    {user.designation.map(d => <Badge key={d} variant="outline">{d}</Badge>)}
+                    <Badge variant="outline">{user.designation}</Badge>
                     <Badge variant="secondary">{user.branch}</Badge>
                   </div>
                 </div>
@@ -301,6 +273,7 @@ export default function ITManagement() {
         </CardContent>
       </Card>
 
+      {/* Ticket Management Section */}
       <Card>
         <CardHeader>
           <CardTitle>Ticket Management</CardTitle>
@@ -353,7 +326,7 @@ export default function ITManagement() {
                       <SelectContent>
                         <SelectItem value="unassigned">Unassigned</SelectItem>
                         {users
-                          .filter(user => user.designation.includes("IT") || user.is_admin)
+                          .filter(user => user.designation === "IT" || user.is_admin)
                           .map(user => (
                             <SelectItem key={user.user_id} value={user.user_id}>
                               {user.name}

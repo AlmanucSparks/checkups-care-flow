@@ -8,8 +8,7 @@ interface Profile {
   user_id: string;
   name: string;
   email: string;
-  phone_number?: string;
-  designation: string[];
+  designation: string;
   branch: string;
   is_admin: boolean;
 }
@@ -18,11 +17,10 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
-  loading: boolean;
-  signUp: (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string, designation: string, branch: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  createUserByAdmin: (email: string, password: string, name: string, designation: string[], branch: string, isAdmin?: boolean) => Promise<{ error: any }>;
+  createUserByAdmin: (email: string, password: string, name: string, designation: string, branch: string, isAdmin?: boolean) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,28 +29,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    setLoading(true);
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
-        const currentUser = session?.user;
-        setUser(currentUser ?? null);
-        if (currentUser) {
-          await fetchProfile(currentUser.id);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Defer profile fetching to avoid deadlock
+          setTimeout(async () => {
+            await fetchProfile(session.user.id);
+          }, 0);
         } else {
           setProfile(null);
         }
-        setLoading(false);
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -65,20 +71,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error fetching profile:', error);
-        setProfile(null)
         return;
       }
 
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
-      setProfile(null)
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, designation: string[], branch: string, phone_number?: string) => {
+  const signUp = async (email: string, password: string, name: string, designation: string, branch: string) => {
     const redirectUrl = `${window.location.origin}/`;
-
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -87,8 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           name,
           designation,
-          branch,
-          phone_number
+          branch
         }
       }
     });
@@ -108,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
-  const createUserByAdmin = async (email: string, password: string, name: string, designation: string[], branch: string, isAdmin = false) => {
+  const createUserByAdmin = async (email: string, password: string, name: string, designation: string, branch: string, isAdmin = false) => {
     if (!profile?.is_admin) {
       return { error: { message: 'Unauthorized: Only admins can create users' } };
     }
@@ -141,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       session,
-      loading,
       signUp,
       signIn,
       signOut,

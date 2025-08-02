@@ -4,8 +4,7 @@ CREATE TABLE public.profiles (
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
-  phone_number TEXT,
-  designation TEXT[] NOT NULL DEFAULT '{"Intern"}',
+  designation TEXT NOT NULL CHECK (designation IN ('Doctor', 'Nurse', 'Pharmacist', 'Dispatch', 'Xpresscheck', 'Accounts', 'Customer Care', 'Claims', 'CDM', 'IT', 'Intern')),
   branch TEXT NOT NULL CHECK (branch IN ('Lusaka', 'Ga', 'JKIA', 'Industrial Park')),
   is_admin BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -34,22 +33,10 @@ CREATE TABLE public.comments (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
--- Create ticket_attachments table
-CREATE TABLE public.ticket_attachments (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  ticket_id UUID NOT NULL REFERENCES public.tickets(id) ON DELETE CASCADE,
-  file_name TEXT NOT NULL,
-  file_url TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-
-
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ticket_attachments ENABLE ROW LEVEL SECURITY;
-
 
 -- RLS Policies for profiles
 CREATE POLICY "Users can view all profiles" ON public.profiles FOR SELECT USING (true);
@@ -66,7 +53,7 @@ CREATE POLICY "Users can view all tickets" ON public.tickets FOR SELECT USING (t
 CREATE POLICY "Users can create tickets" ON public.tickets FOR INSERT WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "IT and ticket creators can update tickets" ON public.tickets FOR UPDATE USING (
   auth.uid() = created_by OR 
-  EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND 'IT' = ANY(designation))
+  EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND designation = 'IT')
 );
 
 -- RLS Policies for comments
@@ -74,25 +61,17 @@ CREATE POLICY "Users can view all comments" ON public.comments FOR SELECT USING 
 CREATE POLICY "Users can create comments" ON public.comments FOR INSERT WITH CHECK (auth.uid() = author_id);
 CREATE POLICY "Comment authors can update their comments" ON public.comments FOR UPDATE USING (auth.uid() = author_id);
 
--- RLS Policies for ticket_attachments
-CREATE POLICY "Users can view all ticket attachments" ON public.ticket_attachments FOR SELECT USING (true);
-CREATE POLICY "Users can create ticket attachments" ON public.ticket_attachments FOR INSERT WITH CHECK (
-  auth.uid() IN (SELECT created_by FROM public.tickets WHERE id = ticket_id)
-);
-
-
 -- Function to handle new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (user_id, name, email, designation, branch, phone_number)
+  INSERT INTO public.profiles (user_id, name, email, designation, branch)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     NEW.email,
-    ARRAY[COALESCE(NEW.raw_user_meta_data->>'designation', 'Intern')],
-    COALESCE(NEW.raw_user_meta_data->>'branch', 'Lusaka'),
-    NEW.raw_user_meta_data->>'phone_number'
+    COALESCE(NEW.raw_user_meta_data->>'designation', 'Intern'),
+    COALESCE(NEW.raw_user_meta_data->>'branch', 'Lusaka')
   );
   RETURN NEW;
 END;

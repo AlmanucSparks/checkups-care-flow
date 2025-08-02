@@ -1,56 +1,16 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { LogOut, Home, Ticket, Settings } from "lucide-react";
+import { LogOut, User, Home, Ticket, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "react-router-dom";
-import { Skeleton } from "./ui/skeleton";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { profile, signOut, loading } = useAuth();
+  const { profile, signOut } = useAuth();
   const location = useLocation();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-card shadow-sm">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div>
-                  <Skeleton className="h-6 w-48" />
-                  <Skeleton className="h-4 w-32 mt-1" />
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-3 w-32 mt-1" />
-                </div>
-                <Skeleton className="h-9 w-24" />
-              </div>
-            </div>
-          </div>
-        </header>
-        <main className="container mx-auto px-4 py-8">
-          {/* No children while loading */}
-        </main>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p>Please log in to continue.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -68,65 +28,70 @@ export default function Layout({ children }: LayoutProps) {
                 <p className="text-sm text-muted-foreground">Checkups Medical Hub</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium">{profile.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {Array.isArray(profile.designation) ? profile.designation.join(', ') : profile.designation} • {profile.branch}
-                  {profile.is_admin && " • Admin"}
-                </p>
+            
+            {profile && (
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-sm font-medium">{profile.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile.designation} • {profile.branch}
+                    {profile.is_admin && " • Admin"}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
+            )}
           </div>
         </div>
       </header>
 
       {/* Navigation */}
-      <nav className="border-b bg-card">
-        <div className="container mx-auto px-4">
-          <div className="flex space-x-6">
-            <Button 
-              variant={location.pathname === "/" ? "secondary" : "ghost"} 
-              size="sm" 
-              className="flex items-center space-x-2 py-4"
-              asChild
-            >
-              <Link to="/">
-                <Home className="h-4 w-4" />
-                <span>Dashboard</span>
-              </Link>
-            </Button>
-            <Button 
-              variant={location.pathname === "/my-tickets" ? "secondary" : "ghost"} 
-              size="sm" 
-              className="flex items-center space-x-2 py-4"
-              asChild
-            >
-              <Link to="/my-tickets">
-                <Ticket className="h-4 w-4" />
-                <span>My Tickets</span>
-              </Link>
-            </Button>
-            {((Array.isArray(profile.designation) && profile.designation.includes('IT')) || profile.is_admin) && (
+      {profile && (
+        <nav className="border-b bg-card">
+          <div className="container mx-auto px-4">
+            <div className="flex space-x-6">
               <Button 
-                variant={location.pathname === "/it-management" ? "secondary" : "ghost"} 
+                variant={location.pathname === "/" ? "secondary" : "ghost"} 
                 size="sm" 
                 className="flex items-center space-x-2 py-4"
                 asChild
               >
-                <Link to="/it-management">
-                  <Settings className="h-4 w-4" />
-                  <span>IT Management</span>
+                <Link to="/">
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
                 </Link>
               </Button>
-            )}
+              <Button 
+                variant={location.pathname === "/my-tickets" ? "secondary" : "ghost"} 
+                size="sm" 
+                className="flex items-center space-x-2 py-4"
+                asChild
+              >
+                <Link to="/my-tickets">
+                  <Ticket className="h-4 w-4" />
+                  <span>My Tickets</span>
+                </Link>
+              </Button>
+              {(profile.designation === 'IT' || profile.is_admin) && (
+                <Button 
+                  variant={location.pathname === "/it-management" ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="flex items-center space-x-2 py-4"
+                  asChild
+                >
+                  <Link to="/it-management">
+                    <Settings className="h-4 w-4" />
+                    <span>IT Management</span>
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

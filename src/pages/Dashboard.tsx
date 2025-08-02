@@ -74,7 +74,7 @@ export default function Dashboard() {
         `);
 
       // Non-admin users can only see their own tickets
-      if (!profile?.designation.includes("IT") && !profile?.is_admin) {
+      if (profile?.designation !== "IT" && !profile?.is_admin) {
         query = query.eq("created_by", user.id);
       }
 
@@ -204,7 +204,7 @@ export default function Dashboard() {
             <Plus className="h-4 w-4 mr-2" />
             New Ticket
           </Button>
-          {(profile?.designation.includes("IT") || profile?.is_admin) && (
+          {(profile?.designation === "IT" || profile?.is_admin) && (
             <Button variant="outline" asChild>
               <Link to="/it-management">
                 <Users className="h-4 w-4 mr-2" />
@@ -300,7 +300,7 @@ export default function Dashboard() {
           </div>
         </Button>
 
-        {(profile?.designation.includes("IT") || profile?.is_admin) && (
+        {(profile?.designation === "IT" || profile?.is_admin) && (
           <Button variant="outline" className="h-20" asChild>
             <Link to="/it-management">
               <div className="text-center">
@@ -317,7 +317,7 @@ export default function Dashboard() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Recent Tickets</CardTitle>
-            {(profile?.designation.includes("IT") || profile?.is_admin) && (
+            {(profile?.designation === "IT" || profile?.is_admin) && (
               <div className="flex gap-2 items-center">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -376,7 +376,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                {(profile?.designation.includes("IT") || profile?.is_admin) && (
+                {(profile?.designation === "IT" || profile?.is_admin) && (
                   <Select
                     value={ticket.status}
                     onValueChange={(status) => handleStatusChange(ticket.id, status)}

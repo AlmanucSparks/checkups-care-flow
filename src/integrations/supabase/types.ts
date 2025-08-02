@@ -57,36 +57,33 @@ export type Database = {
         Row: {
           branch: string
           created_at: string
-          designation: string[]
+          designation: string
           email: string
           id: string
           is_admin: boolean
           name: string
-          phone_number: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           branch: string
           created_at?: string
-          designation?: string[]
+          designation: string
           email: string
           id?: string
           is_admin?: boolean
           name: string
-          phone_number?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           branch?: string
           created_at?: string
-          designation?: string[]
+          designation?: string
           email?: string
           id?: string
           is_admin?: boolean
           name?: string
-          phone_number?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -141,38 +138,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
-        ]
-      }
-      ticket_attachments: {
-        Row: {
-          id: string
-          ticket_id: string
-          file_name: string
-          file_url: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          ticket_id: string
-          file_name: string
-          file_url: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          ticket_id?: string
-          file_name?: string
-          file_url?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ticket_attachments_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
-            referencedColumns: ["id"]
-          }
         ]
       }
     }

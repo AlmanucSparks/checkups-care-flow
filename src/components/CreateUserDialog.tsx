@@ -25,8 +25,7 @@ const DESIGNATIONS = [
   "Claims",
   "CDM",
   "IT",
-  "Intern",
-  "Data Scientist"
+  "Intern"
 ];
 
 const BRANCHES = [
@@ -68,7 +67,7 @@ export default function CreateUserDialog({ open, onClose, onSuccess }: CreateUse
       formData.email,
       formData.password,
       formData.name,
-      [formData.designation],
+      formData.designation,
       formData.branch,
       formData.isAdmin
     );
