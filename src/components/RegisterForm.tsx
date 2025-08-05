@@ -11,14 +11,18 @@ const DESIGNATIONS = [
   "Doctor",
   "Nurse",
   "Pharmacist",
+  "Lab",
   "Dispatch",
-  "Xpresscheck",
   "Accounts",
   "Customer Care",
   "Claims",
   "CDM",
   "IT",
-  "Intern"
+  "Intern",
+  "Management",
+  "Sales",
+  "Procurement",
+  "Inventory"
 ];
 
 const BRANCHES = [

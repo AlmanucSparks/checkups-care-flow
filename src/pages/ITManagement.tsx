@@ -8,12 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Search, Settings, AlertCircle, Clock, CheckCircle } from "lucide-react";
-import { Activity, Ticket } from "lucide-react";
+import { Activity, Ticket, BarChart3, Zap, TrendingUp } from "lucide-react";
 import CreateUserDialog from "@/components/CreateUserDialog";
 import EditUserDialog from "@/components/EditUserDialog";
 import ResetPasswordDialog from "@/components/ResetPasswordDialog";
 import UserActivityDialog from "@/components/UserActivityDialog";
 import BulkActionsDialog from "@/components/BulkActionsDialog";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import LiveActivityFeed from "@/components/LiveActivityFeed";
+import QuickActionsPanel from "@/components/QuickActionsPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface User {
   id: string;
@@ -56,13 +60,18 @@ export default function ITManagement() {
   const [showBulkActionsDialog, setShowBulkActionsDialog] = useState(false);
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
   const [filterBranch, setFilterBranch] = useState("all");
   const [filterDesignation, setFilterDesignation] = useState("all");
   const [ticketSearchTerm, setTicketSearchTerm] = useState("");
   const [ticketStatusFilter, setTicketStatusFilter] = useState("all");
 
   const BRANCHES = ["LUSAKA", "GA", "JKIA", "EPZ"];
-  const DESIGNATIONS = ["Intern", "Junior Developer", "Senior Developer", "IT Manager", "System Administrator", "Help Desk", "Network Engineer"];
+  const DESIGNATIONS = [
+    "Doctor", "Nurse", "Pharmacist", "Lab", "Dispatch", "Accounts", 
+    "Customer Care", "Claims", "CDM", "IT", "Intern", "Management", 
+    "Sales", "Procurement", "Inventory"
+  ];
 
   useEffect(() => {
     if (profile?.designation === "IT" || profile?.is_admin) {
@@ -182,6 +191,35 @@ export default function ITManagement() {
     }
   };
 
+  const handleExportData = () => {
+    // Create CSV data
+    const csvData = [
+      ['Name', 'Email', 'Designation', 'Branch', 'Admin', 'Created'],
+      ...filteredUsers.map(user => [
+        user.name,
+        user.email,
+        user.designation,
+        user.branch,
+        user.is_admin ? 'Yes' : 'No',
+        new Date(user.created_at).toLocaleDateString()
+      ])
+    ];
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Complete",
+      description: "User data has been exported successfully.",
+    });
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -235,171 +273,234 @@ export default function ITManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">IT Management</h1>
-        <Button onClick={() => setShowCreateUserDialog(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+      {/* Enhanced Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            IT Management Center
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Comprehensive system administration and analytics dashboard
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportData}>
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Export Data
+          </Button>
+          <Button onClick={() => setShowCreateUserDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add User
+          </Button>
+        </div>
       </div>
 
-      {/* User Management Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            User Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Filters */}
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* Main Dashboard with Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Users
+          </TabsTrigger>
+          <TabsTrigger value="tickets" className="flex items-center gap-2">
+            <Ticket className="h-4 w-4" />
+            Tickets
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <AnalyticsDashboard />
             </div>
-            <Select value={filterBranch} onValueChange={setFilterBranch}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Branch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {BRANCHES.map(branch => (
-                  <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterDesignation} onValueChange={setFilterDesignation}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Designation" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Designations</SelectItem>
-                {DESIGNATIONS.map(designation => (
-                  <SelectItem key={designation} value={designation}>{designation}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-6">
+              <QuickActionsPanel
+                onCreateTicket={() => {/* Handle create ticket */}}
+                onCreateUser={() => setShowCreateUserDialog(true)}
+                onBulkActions={() => setShowBulkActionsDialog(true)}
+                onExportData={handleExportData}
+                onSystemSettings={() => {/* Handle system settings */}}
+              />
+              <LiveActivityFeed />
+            </div>
           </div>
+        </TabsContent>
 
-          {/* Users List */}
-          <div className="grid gap-4">
-            {filteredUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{user.name}</h3>
-                    {user.is_admin && <Badge variant="destructive">Admin</Badge>}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                  <div className="flex gap-2">
-                    <Badge variant="outline">{user.designation}</Badge>
-                    <Badge variant="secondary">{user.branch}</Badge>
-                  </div>
+        <TabsContent value="users" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                User Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Filters */}
+              <div className="flex gap-4 items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewActivity(user)}
-                  >
-                    Activity
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleResetPassword(user)}
-                  >
-                    Reset Password
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditUser(user)}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                </div>
+                <Select value={filterBranch} onValueChange={setFilterBranch}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Branches</SelectItem>
+                    {BRANCHES.map(branch => (
+                      <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterDesignation} onValueChange={setFilterDesignation}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Designation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Designations</SelectItem>
+                    {DESIGNATIONS.map(designation => (
+                      <SelectItem key={designation} value={designation}>{designation}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Ticket Management Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ticket Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {tickets.map((ticket) => (
-              <div key={ticket.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="space-y-2">
-                    <h3 className="font-medium">{ticket.title}</h3>
-                    <p className="text-sm text-muted-foreground">{ticket.description}</p>
+              {/* Users List */}
+              <div className="grid gap-4">
+                {filteredUsers.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{user.name}</h3>
+                        {user.is_admin && <Badge variant="destructive">Admin</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">{user.designation}</Badge>
+                        <Badge variant="secondary">{user.branch}</Badge>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
-                      <Badge variant={getStatusColor(ticket.status)}>
-                        {getStatusIcon(ticket.status)}
-                        <span className="ml-1">{ticket.status}</span>
-                      </Badge>
-                      <Badge variant={getPriorityColor(ticket.priority)}>
-                        {ticket.priority}
-                      </Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      <p>Created by: {ticket.creator?.name}</p>
-                      {ticket.assignee && <p>Assigned to: {ticket.assignee.name}</p>}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewActivity(user)}
+                      >
+                        Activity
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetPassword(user)}
+                      >
+                        Reset Password
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Select
-                      value={ticket.status}
-                      onValueChange={(status) => handleStatusChange(ticket.id, status)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Open">Open</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Resolved">Resolved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={ticket.assigned_to || "unassigned"}
-                      onValueChange={(userId) => 
-                        userId !== "unassigned" && handleAssignTicket(ticket.id, userId)
-                      }
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Assign to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {users
-                          .filter(user => user.designation === "IT" || user.is_admin)
-                          .map(user => (
-                            <SelectItem key={user.user_id} value={user.user_id}>
-                              {user.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tickets" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Ticket className="h-5 w-5" />
+                Ticket Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {tickets.map((ticket) => (
+                  <div key={ticket.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="space-y-2">
+                        <h3 className="font-medium">{ticket.title}</h3>
+                        <p className="text-sm text-muted-foreground">{ticket.description}</p>
+                        <div className="flex gap-2">
+                          <Badge variant={getStatusColor(ticket.status)}>
+                            {getStatusIcon(ticket.status)}
+                            <span className="ml-1">{ticket.status}</span>
+                          </Badge>
+                          <Badge variant={getPriorityColor(ticket.priority)}>
+                            {ticket.priority}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <p>Created by: {ticket.creator?.name}</p>
+                          {ticket.assignee && <p>Assigned to: {ticket.assignee.name}</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Select
+                          value={ticket.status}
+                          onValueChange={(status) => handleStatusChange(ticket.id, status)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Open">Open</SelectItem>
+                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="Resolved">Resolved</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={ticket.assigned_to || "unassigned"}
+                          onValueChange={(userId) => 
+                            userId !== "unassigned" && handleAssignTicket(ticket.id, userId)
+                          }
+                        >
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="Assign to..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {users
+                              .filter(user => user.designation === "IT" || user.is_admin)
+                              .map(user => (
+                                <SelectItem key={user.user_id} value={user.user_id}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <AnalyticsDashboard />
+        </TabsContent>
+      </Tabs>
 
       <CreateUserDialog
         open={showCreateUserDialog}

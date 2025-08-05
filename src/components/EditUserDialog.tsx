@@ -9,14 +9,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 
 const DESIGNATIONS = [
+  "Doctor",
+  "Nurse",
+  "Pharmacist",
+  "Lab",
+  "Dispatch",
+  "Accounts",
+  "Customer Care",
+  "Claims",
+  "CDM",
+  "IT",
   "Intern",
-  "Junior Developer", 
-  "Senior Developer",
-  "IT Manager",
-  "System Administrator",
-  "Help Desk",
-  "Network Engineer",
-  "IT"
+  "Management",
+  "Sales",
+  "Procurement",
+  "Inventory"
 ];
 
 const BRANCHES = [
