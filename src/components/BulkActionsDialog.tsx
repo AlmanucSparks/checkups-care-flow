@@ -22,7 +22,7 @@ export default function BulkActionsDialog({ open, onClose, selectedTickets, onSu
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     if (open) {
       fetchITUsers();
     }
