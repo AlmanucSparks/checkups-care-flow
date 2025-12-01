@@ -18,7 +18,9 @@ interface Ticket {
   created_at: string;
   updated_at: string;
   assigned_to: string | null;
-  assignee_name?: string;
+  assignee?: {
+    name: string;
+  };
 }
 
 interface Comment {
@@ -26,7 +28,9 @@ interface Comment {
   message: string;
   created_at: string;
   author_id: string;
-  author_name?: string;
+  author?: {
+    name: string;
+  };
 }
 
 export default function MyTickets() {
@@ -34,7 +38,6 @@ export default function MyTickets() {
   const { toast } = useToast();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [comments, setComments] = useState<{ [key: string]: Comment[] }>({});
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -42,26 +45,19 @@ export default function MyTickets() {
 
   useEffect(() => {
     if (user) {
-      fetchProfiles();
       fetchMyTickets();
     }
   }, [user]);
-
-  const fetchProfiles = async () => {
-    const { data } = await supabase.from("profiles").select("user_id, name");
-    if (data) {
-      const profileMap: Record<string, string> = {};
-      data.forEach(p => { profileMap[p.user_id] = p.name; });
-      setProfiles(profileMap);
-    }
-  };
 
   const fetchMyTickets = async () => {
     if (!user) return;
 
     const { data, error } = await supabase
       .from("tickets")
-      .select("*")
+      .select(`
+        *,
+        assignee:profiles!tickets_assigned_to_fkey(name)
+      `)
       .eq("created_by", user.id)
       .order("created_at", { ascending: false });
 
@@ -79,7 +75,10 @@ export default function MyTickets() {
   const fetchComments = async (ticketId: string) => {
     const { data, error } = await supabase
       .from("comments")
-      .select("*")
+      .select(`
+        *,
+        author:profiles!comments_author_id_fkey(name)
+      `)
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
 
@@ -157,34 +156,29 @@ export default function MyTickets() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "open": return <AlertCircle className="h-4 w-4" />;
-      case "in_progress": return <Clock className="h-4 w-4" />;
-      case "resolved": return <CheckCircle className="h-4 w-4" />;
+      case "Open": return <AlertCircle className="h-4 w-4" />;
+      case "In Progress": return <Clock className="h-4 w-4" />;
+      case "Resolved": return <CheckCircle className="h-4 w-4" />;
       default: return <AlertCircle className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "open": return "destructive";
-      case "in_progress": return "default";
-      case "resolved": return "secondary";
+      case "Open": return "destructive";
+      case "In Progress": return "default";
+      case "Resolved": return "secondary";
       default: return "outline";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high":
-      case "urgent": return "destructive";
-      case "medium": return "default";
-      case "low": return "secondary";
+      case "High": return "destructive";
+      case "Medium": return "default";
+      case "Low": return "secondary";
       default: return "outline";
     }
-  };
-
-  const formatStatus = (status: string) => {
-    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (
@@ -207,10 +201,10 @@ export default function MyTickets() {
                   <div className="flex gap-2">
                     <Badge variant={getStatusColor(ticket.status)}>
                       {getStatusIcon(ticket.status)}
-                      <span className="ml-1">{formatStatus(ticket.status)}</span>
+                      <span className="ml-1">{ticket.status}</span>
                     </Badge>
                     <Badge variant={getPriorityColor(ticket.priority)}>
-                      {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
+                      {ticket.priority}
                     </Badge>
                   </div>
                 </div>
@@ -229,8 +223,8 @@ export default function MyTickets() {
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>Created: {new Date(ticket.created_at).toLocaleDateString()}</p>
                 <p>Updated: {new Date(ticket.updated_at).toLocaleDateString()}</p>
-                {ticket.assigned_to && (
-                  <p>Assigned to: {profiles[ticket.assigned_to] || 'Unknown'}</p>
+                {ticket.assignee && (
+                  <p>Assigned to: {ticket.assignee.name}</p>
                 )}
               </div>
 
@@ -242,7 +236,7 @@ export default function MyTickets() {
                       <div key={comment.id} className="bg-muted p-3 rounded-lg">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-medium text-sm">
-                            {profiles[comment.author_id] || 'Unknown'}
+                            {comment.author?.name || 'Unknown'}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(comment.created_at).toLocaleDateString()}

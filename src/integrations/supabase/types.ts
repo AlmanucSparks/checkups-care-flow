@@ -7,36 +7,43 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
+  // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
       comments: {
         Row: {
-          author_id: string | null
+          author_id: string
           created_at: string
           id: string
           message: string
           ticket_id: string
         }
         Insert: {
-          author_id?: string | null
+          author_id: string
           created_at?: string
           id?: string
           message: string
           ticket_id: string
         }
         Update: {
-          author_id?: string | null
+          author_id?: string
           created_at?: string
           id?: string
           message?: string
           ticket_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "comments_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -48,31 +55,34 @@ export type Database = {
       }
       profiles: {
         Row: {
-          branch: string | null
+          branch: string
           created_at: string
-          designation: string | null
+          designation: string
           email: string
           id: string
+          is_admin: boolean
           name: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          branch?: string | null
+          branch: string
           created_at?: string
-          designation?: string | null
+          designation: string
           email: string
           id?: string
+          is_admin?: boolean
           name: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          branch?: string | null
+          branch?: string
           created_at?: string
-          designation?: string | null
+          designation?: string
           email?: string
           id?: string
+          is_admin?: boolean
           name?: string
           updated_at?: string
           user_id?: string
@@ -83,8 +93,8 @@ export type Database = {
         Row: {
           assigned_to: string | null
           created_at: string
-          created_by: string | null
-          description: string | null
+          created_by: string
+          description: string
           id: string
           priority: string
           status: string
@@ -94,8 +104,8 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           created_at?: string
-          created_by?: string | null
-          description?: string | null
+          created_by: string
+          description: string
           id?: string
           priority?: string
           status?: string
@@ -105,49 +115,40 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           created_at?: string
-          created_by?: string | null
-          description?: string | null
+          created_by?: string
+          description?: string
           id?: string
           priority?: string
           status?: string
           title?: string
           updated_at?: string
         }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "it_staff" | "user"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -274,8 +275,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "it_staff", "user"],
-    },
+    Enums: {},
   },
 } as const

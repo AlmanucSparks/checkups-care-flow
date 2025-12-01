@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { profile, signOut, isAdmin, isITStaff } = useAuth();
+  const { profile, signOut } = useAuth();
   const location = useLocation();
 
   if (!profile) {
@@ -39,8 +39,7 @@ export default function Layout({ children }: LayoutProps) {
                 <p className="text-sm font-medium">{profile.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {profile.designation} • {profile.branch}
-                  {isAdmin && " • Admin"}
-                  {isITStaff && !isAdmin && " • IT Staff"}
+                  {profile.is_admin && " • Admin"}
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={signOut}>
@@ -78,7 +77,7 @@ export default function Layout({ children }: LayoutProps) {
                 <span>My Tickets</span>
               </Link>
             </Button>
-            {isITStaff && (
+            {(profile.designation === 'IT' || profile.is_admin) && (
               <Button 
                 variant={location.pathname === "/it-management" ? "secondary" : "ghost"} 
                 size="sm" 
