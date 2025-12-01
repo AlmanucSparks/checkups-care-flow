@@ -23,18 +23,24 @@ interface ActivityItem {
 
 export default function LiveActivityFeed() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchRecentActivities();
+    fetchProfiles();
+  }, []);
+
+  useEffect(() => {
+    if (Object.keys(profiles).length > 0) {
+      fetchRecentActivities();
+    }
     
     // Set up real-time subscriptions
     const ticketsSubscription = supabase
       .channel('tickets-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tickets' },
-        (payload) => {
-          console.log('Ticket change:', payload);
+        () => {
           fetchRecentActivities();
         }
       )
@@ -44,8 +50,7 @@ export default function LiveActivityFeed() {
       .channel('comments-changes')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'comments' },
-        (payload) => {
-          console.log('Comment change:', payload);
+        () => {
           fetchRecentActivities();
         }
       )
@@ -55,30 +60,36 @@ export default function LiveActivityFeed() {
       ticketsSubscription.unsubscribe();
       commentsSubscription.unsubscribe();
     };
-  }, []);
+  }, [profiles]);
+
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("user_id, name");
+    if (data) {
+      const profileMap: Record<string, string> = {};
+      data.forEach(p => { profileMap[p.user_id] = p.name; });
+      setProfiles(profileMap);
+    }
+  };
 
   const fetchRecentActivities = async () => {
     try {
-      const activities: ActivityItem[] = [];
+      const activitiesList: ActivityItem[] = [];
 
       // Fetch recent tickets
       const { data: tickets, error: ticketsError } = await supabase
         .from('tickets')
-        .select(`
-          id, title, status, priority, created_at, updated_at,
-          creator:profiles!tickets_created_by_fkey(name)
-        `)
+        .select('id, title, status, priority, created_at, updated_at, created_by')
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (!ticketsError && tickets) {
         tickets.forEach(ticket => {
-          activities.push({
+          activitiesList.push({
             id: `ticket-${ticket.id}`,
             type: 'ticket_created',
             title: 'New Ticket Created',
             description: ticket.title,
-            user: ticket.creator?.name || 'Unknown User',
+            user: profiles[ticket.created_by] || 'Unknown User',
             timestamp: ticket.created_at,
             priority: ticket.priority,
             status: ticket.status
@@ -89,31 +100,37 @@ export default function LiveActivityFeed() {
       // Fetch recent comments
       const { data: comments, error: commentsError } = await supabase
         .from('comments')
-        .select(`
-          id, message, created_at,
-          author:profiles!comments_author_id_fkey(name),
-          ticket:tickets(title)
-        `)
+        .select('id, message, created_at, author_id, ticket_id')
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (!commentsError && comments) {
+        // Fetch ticket titles for comments
+        const ticketIds = [...new Set(comments.map(c => c.ticket_id))];
+        const { data: ticketData } = await supabase
+          .from('tickets')
+          .select('id, title')
+          .in('id', ticketIds);
+        
+        const ticketTitles: Record<string, string> = {};
+        ticketData?.forEach(t => { ticketTitles[t.id] = t.title; });
+
         comments.forEach(comment => {
-          activities.push({
+          activitiesList.push({
             id: `comment-${comment.id}`,
             type: 'comment_added',
             title: 'Comment Added',
-            description: `"${comment.message.substring(0, 50)}..." on "${comment.ticket?.title}"`,
-            user: comment.author?.name || 'Unknown User',
+            description: `"${comment.message.substring(0, 50)}..." on "${ticketTitles[comment.ticket_id] || 'Ticket'}"`,
+            user: profiles[comment.author_id] || 'Unknown User',
             timestamp: comment.created_at
           });
         });
       }
 
       // Sort all activities by timestamp
-      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      activitiesList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
-      setActivities(activities.slice(0, 20));
+      setActivities(activitiesList.slice(0, 20));
     } catch (error) {
       console.error('Error fetching activities:', error);
     } finally {
@@ -138,20 +155,25 @@ export default function LiveActivityFeed() {
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case 'Open': return 'destructive';
-      case 'In Progress': return 'default';
-      case 'Resolved': return 'secondary';
+      case 'open': return 'destructive';
+      case 'in_progress': return 'default';
+      case 'resolved': return 'secondary';
       default: return 'outline';
     }
   };
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
-      case 'High': return 'destructive';
-      case 'Medium': return 'default';
-      case 'Low': return 'secondary';
+      case 'high':
+      case 'urgent': return 'destructive';
+      case 'medium': return 'default';
+      case 'low': return 'secondary';
       default: return 'outline';
     }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   if (loading) {
@@ -221,12 +243,12 @@ export default function LiveActivityFeed() {
                     <span className="text-xs text-muted-foreground">{activity.user}</span>
                     {activity.status && (
                       <Badge variant={getStatusColor(activity.status)} className="text-xs">
-                        {activity.status}
+                        {formatStatus(activity.status)}
                       </Badge>
                     )}
                     {activity.priority && (
                       <Badge variant={getPriorityColor(activity.priority)} className="text-xs">
-                        {activity.priority}
+                        {activity.priority.charAt(0).toUpperCase() + activity.priority.slice(1)}
                       </Badge>
                     )}
                   </div>

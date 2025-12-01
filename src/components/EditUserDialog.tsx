@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ interface User {
   email: string;
   designation: string;
   branch: string;
-  is_admin: boolean;
+  roles?: string[];
 }
 
 interface EditUserDialogProps {
@@ -58,8 +58,20 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
     email: user.email,
     designation: user.designation,
     branch: user.branch,
-    is_admin: user.is_admin,
+    isAdmin: user.roles?.includes('admin') || false,
+    isITStaff: user.roles?.includes('it_staff') || false,
   });
+
+  useEffect(() => {
+    setFormData({
+      name: user.name,
+      email: user.email,
+      designation: user.designation,
+      branch: user.branch,
+      isAdmin: user.roles?.includes('admin') || false,
+      isITStaff: user.roles?.includes('it_staff') || false,
+    });
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,18 +88,39 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      // Update profile
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           name: formData.name,
           email: formData.email,
           designation: formData.designation,
           branch: formData.branch,
-          is_admin: formData.is_admin,
         })
         .eq("id", user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Update roles - first delete existing non-user roles
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", user.user_id)
+        .in("role", ["admin", "it_staff"]);
+
+      // Add admin role if checked
+      if (formData.isAdmin) {
+        await supabase
+          .from("user_roles")
+          .insert({ user_id: user.user_id, role: "admin" });
+      }
+
+      // Add IT staff role if checked
+      if (formData.isITStaff && !formData.isAdmin) {
+        await supabase
+          .from("user_roles")
+          .insert({ user_id: user.user_id, role: "it_staff" });
+      }
 
       toast({
         title: "Success",
@@ -112,7 +145,8 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
       email: user.email,
       designation: user.designation,
       branch: user.branch,
-      is_admin: user.is_admin,
+      isAdmin: user.roles?.includes('admin') || false,
+      isITStaff: user.roles?.includes('it_staff') || false,
     });
     onClose();
   };
@@ -183,15 +217,28 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
             </Select>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_admin"
-              checked={formData.is_admin}
-              onCheckedChange={(checked) => 
-                setFormData({ ...formData, is_admin: !!checked })
-              }
-            />
-            <Label htmlFor="is_admin">Administrator privileges</Label>
+          <div className="space-y-3">
+            <Label>Roles</Label>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isAdmin"
+                checked={formData.isAdmin}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, isAdmin: !!checked })
+                }
+              />
+              <Label htmlFor="isAdmin">Administrator</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isITStaff"
+                checked={formData.isITStaff}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, isITStaff: !!checked })
+                }
+              />
+              <Label htmlFor="isITStaff">IT Staff</Label>
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2">

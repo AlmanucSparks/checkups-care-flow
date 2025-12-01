@@ -6,11 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
+  PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 import { 
-  TrendingUp, TrendingDown, Users, Clock, CheckCircle, AlertTriangle,
-  Activity, Target, Zap, Award, Calendar, MapPin
+  TrendingUp, TrendingDown, Clock, CheckCircle, AlertTriangle,
+  Activity, Target, Zap, Award, Calendar, MapPin, Users
 } from "lucide-react";
 
 interface AnalyticsData {
@@ -39,35 +39,42 @@ export default function AnalyticsDashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      // Fetch tickets with related data
-      const { data: tickets, error } = await supabase
+      // Fetch tickets
+      const { data: tickets, error: ticketsError } = await supabase
         .from('tickets')
-        .select(`
-          *,
-          creator:profiles!tickets_created_by_fkey(designation, branch),
-          assignee:profiles!tickets_assigned_to_fkey(designation, branch)
-        `);
+        .select('*');
 
-      if (error) throw error;
+      // Fetch profiles separately
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, designation, branch');
+
+      if (ticketsError) throw ticketsError;
+
+      // Create profile lookup
+      const profileLookup: Record<string, { designation: string; branch: string }> = {};
+      profilesData?.forEach(p => {
+        profileLookup[p.user_id] = { designation: p.designation, branch: p.branch };
+      });
 
       // Process data for charts
       const statusData = [
-        { name: 'Open', value: tickets?.filter(t => t.status === 'Open').length || 0, color: '#ef4444' },
-        { name: 'In Progress', value: tickets?.filter(t => t.status === 'In Progress').length || 0, color: '#f59e0b' },
-        { name: 'Resolved', value: tickets?.filter(t => t.status === 'Resolved').length || 0, color: '#10b981' },
-        { name: 'Closed', value: tickets?.filter(t => t.status === 'Closed').length || 0, color: '#6b7280' }
+        { name: 'Open', value: tickets?.filter(t => t.status === 'open').length || 0, color: '#ef4444' },
+        { name: 'In Progress', value: tickets?.filter(t => t.status === 'in_progress').length || 0, color: '#f59e0b' },
+        { name: 'Resolved', value: tickets?.filter(t => t.status === 'resolved').length || 0, color: '#10b981' },
+        { name: 'Closed', value: tickets?.filter(t => t.status === 'closed').length || 0, color: '#6b7280' }
       ];
 
       const priorityData = [
-        { name: 'Low', value: tickets?.filter(t => t.priority === 'Low').length || 0, color: '#10b981' },
-        { name: 'Medium', value: tickets?.filter(t => t.priority === 'Medium').length || 0, color: '#f59e0b' },
-        { name: 'High', value: tickets?.filter(t => t.priority === 'High').length || 0, color: '#ef4444' },
-        { name: 'Urgent', value: tickets?.filter(t => t.priority === 'Urgent').length || 0, color: '#dc2626' }
+        { name: 'Low', value: tickets?.filter(t => t.priority === 'low').length || 0, color: '#10b981' },
+        { name: 'Medium', value: tickets?.filter(t => t.priority === 'medium').length || 0, color: '#f59e0b' },
+        { name: 'High', value: tickets?.filter(t => t.priority === 'high').length || 0, color: '#ef4444' },
+        { name: 'Urgent', value: tickets?.filter(t => t.priority === 'urgent').length || 0, color: '#dc2626' }
       ];
 
       // Branch distribution
-      const branchCounts = tickets?.reduce((acc: any, ticket) => {
-        const branch = ticket.creator?.branch || 'Unknown';
+      const branchCounts = tickets?.reduce((acc: Record<string, number>, ticket) => {
+        const branch = profileLookup[ticket.created_by]?.branch || 'Unknown';
         acc[branch] = (acc[branch] || 0) + 1;
         return acc;
       }, {});
@@ -78,8 +85,8 @@ export default function AnalyticsDashboard() {
       }));
 
       // Designation distribution
-      const designationCounts = tickets?.reduce((acc: any, ticket) => {
-        const designation = ticket.creator?.designation || 'Unknown';
+      const designationCounts = tickets?.reduce((acc: Record<string, number>, ticket) => {
+        const designation = profileLookup[ticket.created_by]?.designation || 'Unknown';
         acc[designation] = (acc[designation] || 0) + 1;
         return acc;
       }, {});
@@ -87,9 +94,9 @@ export default function AnalyticsDashboard() {
       const designationData = Object.entries(designationCounts || {}).map(([name, value]) => ({
         name,
         value: value as number
-      })).slice(0, 8); // Top 8 designations
+      })).slice(0, 8);
 
-      // Weekly trend (mock data for now)
+      // Weekly trend (mock data)
       const weeklyTrend = [
         { day: 'Mon', tickets: 12, resolved: 8 },
         { day: 'Tue', tickets: 19, resolved: 15 },
@@ -101,10 +108,10 @@ export default function AnalyticsDashboard() {
       ];
 
       const responseMetrics = {
-        avgResponseTime: 2.4, // hours
+        avgResponseTime: 2.4,
         resolutionRate: 85,
         customerSatisfaction: 4.2,
-        activeTickets: tickets?.filter(t => t.status !== 'Closed' && t.status !== 'Resolved').length || 0
+        activeTickets: tickets?.filter(t => t.status !== 'closed' && t.status !== 'resolved').length || 0
       };
 
       setAnalytics({
@@ -346,7 +353,7 @@ export default function AnalyticsDashboard() {
                   {analytics.ticketsByDesignation.map((item, index) => (
                     <div key={item.name} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                         <span className="text-sm font-medium">{item.name}</span>
                       </div>
                       <Badge variant="secondary">{item.value}</Badge>
@@ -422,12 +429,12 @@ export default function AnalyticsDashboard() {
                   <span className="text-rose-600">3 High Priority Tickets</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="text-rose-600">5 Overdue Tickets</span>
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="text-rose-600">5 Pending Assignments</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span className="text-rose-600">2 Unassigned Tickets</span>
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-rose-600">2 Overdue Tickets</span>
                 </div>
               </CardContent>
             </Card>

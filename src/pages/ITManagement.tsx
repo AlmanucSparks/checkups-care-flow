@@ -26,11 +26,11 @@ interface User {
   email: string;
   designation: string;
   branch: string;
-  is_admin: boolean;
   created_at: string;
+  roles?: string[];
 }
 
-interface Ticket {
+interface TicketItem {
   id: string;
   title: string;
   description: string;
@@ -39,19 +39,16 @@ interface Ticket {
   created_at: string;
   created_by: string;
   assigned_to: string | null;
-  creator?: {
-    name: string;
-  };
-  assignee?: {
-    name: string;
-  };
+  creator_name?: string;
+  assignee_name?: string;
 }
 
 export default function ITManagement() {
-  const { profile } = useAuth();
+  const { profile, isAdmin, isITStaff } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -74,11 +71,21 @@ export default function ITManagement() {
   ];
 
   useEffect(() => {
-    if (profile?.designation === "IT" || profile?.is_admin) {
+    if (isITStaff || isAdmin) {
+      fetchProfiles();
       fetchUsers();
-      fetchUnassignedTickets();
+      fetchTickets();
     }
-  }, [profile]);
+  }, [isITStaff, isAdmin]);
+
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("user_id, name");
+    if (data) {
+      const profileMap: Record<string, string> = {};
+      data.forEach(p => { profileMap[p.user_id] = p.name; });
+      setProfiles(profileMap);
+    }
+  };
 
   const fetchUsers = async () => {
     const { data, error } = await supabase
@@ -93,18 +100,26 @@ export default function ITManagement() {
         variant: "destructive",
       });
     } else {
-      setUsers(data || []);
+      // Fetch roles for all users
+      const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
+      const userRoles: Record<string, string[]> = {};
+      rolesData?.forEach(r => {
+        if (!userRoles[r.user_id]) userRoles[r.user_id] = [];
+        userRoles[r.user_id].push(r.role);
+      });
+
+      const usersWithRoles = (data || []).map(user => ({
+        ...user,
+        roles: userRoles[user.user_id] || []
+      }));
+      setUsers(usersWithRoles);
     }
   };
 
-  const fetchUnassignedTickets = async () => {
+  const fetchTickets = async () => {
     const { data, error } = await supabase
       .from("tickets")
-      .select(`
-        *,
-        creator:profiles!tickets_created_by_fkey(name),
-        assignee:profiles!tickets_assigned_to_fkey(name)
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -121,7 +136,7 @@ export default function ITManagement() {
   const handleAssignTicket = async (ticketId: string, userId: string) => {
     const { error } = await supabase
       .from("tickets")
-      .update({ assigned_to: userId })
+      .update({ assigned_to: userId === "unassigned" ? null : userId })
       .eq("id", ticketId);
 
     if (error) {
@@ -135,7 +150,7 @@ export default function ITManagement() {
         title: "Success",
         description: "Ticket assigned successfully",
       });
-      fetchUnassignedTickets();
+      fetchTickets();
     }
   };
 
@@ -156,7 +171,7 @@ export default function ITManagement() {
         title: "Success",
         description: "Ticket status updated successfully",
       });
-      fetchUnassignedTickets();
+      fetchTickets();
     }
   };
 
@@ -175,32 +190,15 @@ export default function ITManagement() {
     setShowUserActivityDialog(true);
   };
 
-  const handleTicketSelect = (ticketId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedTickets(prev => [...prev, ticketId]);
-    } else {
-      setSelectedTickets(prev => prev.filter(id => id !== ticketId));
-    }
-  };
-
-  const handleSelectAllTickets = (checked: boolean) => {
-    if (checked) {
-      setSelectedTickets(filteredTickets.map(t => t.id));
-    } else {
-      setSelectedTickets([]);
-    }
-  };
-
   const handleExportData = () => {
-    // Create CSV data
     const csvData = [
-      ['Name', 'Email', 'Designation', 'Branch', 'Admin', 'Created'],
+      ['Name', 'Email', 'Designation', 'Branch', 'Roles', 'Created'],
       ...filteredUsers.map(user => [
         user.name,
         user.email,
         user.designation,
         user.branch,
-        user.is_admin ? 'Yes' : 'No',
+        user.roles?.join(', ') || 'user',
         new Date(user.created_at).toLocaleDateString()
       ])
     ];
@@ -231,45 +229,52 @@ export default function ITManagement() {
 
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.title.toLowerCase().includes(ticketSearchTerm.toLowerCase()) ||
-                         ticket.description.toLowerCase().includes(ticketSearchTerm.toLowerCase());
+                         (ticket.description?.toLowerCase().includes(ticketSearchTerm.toLowerCase()) || false);
     const matchesStatus = ticketStatusFilter === "all" || ticket.status === ticketStatusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Open": return <AlertCircle className="h-4 w-4" />;
-      case "In Progress": return <Clock className="h-4 w-4" />;
-      case "Resolved": return <CheckCircle className="h-4 w-4" />;
+      case "open": return <AlertCircle className="h-4 w-4" />;
+      case "in_progress": return <Clock className="h-4 w-4" />;
+      case "resolved": return <CheckCircle className="h-4 w-4" />;
       default: return <AlertCircle className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Open": return "destructive";
-      case "In Progress": return "default";
-      case "Resolved": return "secondary";
+      case "open": return "destructive";
+      case "in_progress": return "default";
+      case "resolved": return "secondary";
       default: return "outline";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "High": return "destructive";
-      case "Medium": return "default";
-      case "Low": return "secondary";
+      case "high":
+      case "urgent": return "destructive";
+      case "medium": return "default";
+      case "low": return "secondary";
       default: return "outline";
     }
   };
 
-  if (profile?.designation !== "IT" && !profile?.is_admin) {
+  const formatStatus = (status: string) => {
+    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  if (!isITStaff && !isAdmin) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">Access denied. This page is only available to IT staff and administrators.</p>
       </div>
     );
   }
+
+  const itUsers = users.filter(u => u.designation === "IT" || u.roles?.includes('admin') || u.roles?.includes('it_staff'));
 
   return (
     <div className="space-y-6">
@@ -323,11 +328,11 @@ export default function ITManagement() {
             </div>
             <div className="space-y-6">
               <QuickActionsPanel
-                onCreateTicket={() => {/* Handle create ticket */}}
+                onCreateTicket={() => {}}
                 onCreateUser={() => setShowCreateUserDialog(true)}
                 onBulkActions={() => setShowBulkActionsDialog(true)}
                 onExportData={handleExportData}
-                onSystemSettings={() => {/* Handle system settings */}}
+                onSystemSettings={() => {}}
               />
               <LiveActivityFeed />
             </div>
@@ -385,7 +390,8 @@ export default function ITManagement() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium">{user.name}</h3>
-                        {user.is_admin && <Badge variant="destructive">Admin</Badge>}
+                        {user.roles?.includes('admin') && <Badge variant="destructive">Admin</Badge>}
+                        {user.roles?.includes('it_staff') && <Badge variant="default">IT Staff</Badge>}
                       </div>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
                       <div className="flex gap-2">
@@ -434,7 +440,7 @@ export default function ITManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {tickets.map((ticket) => (
+                {filteredTickets.map((ticket) => (
                   <div key={ticket.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex justify-between items-start mb-3">
                       <div className="space-y-2">
@@ -443,15 +449,15 @@ export default function ITManagement() {
                         <div className="flex gap-2">
                           <Badge variant={getStatusColor(ticket.status)}>
                             {getStatusIcon(ticket.status)}
-                            <span className="ml-1">{ticket.status}</span>
+                            <span className="ml-1">{formatStatus(ticket.status)}</span>
                           </Badge>
                           <Badge variant={getPriorityColor(ticket.priority)}>
-                            {ticket.priority}
+                            {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          <p>Created by: {ticket.creator?.name}</p>
-                          {ticket.assignee && <p>Assigned to: {ticket.assignee.name}</p>}
+                          <p>Created by: {profiles[ticket.created_by] || 'Unknown'}</p>
+                          {ticket.assigned_to && <p>Assigned to: {profiles[ticket.assigned_to] || 'Unknown'}</p>}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -463,29 +469,26 @@ export default function ITManagement() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Open">Open</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="Resolved">Resolved</SelectItem>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
                           </SelectContent>
                         </Select>
                         <Select
                           value={ticket.assigned_to || "unassigned"}
-                          onValueChange={(userId) => 
-                            userId !== "unassigned" && handleAssignTicket(ticket.id, userId)
-                          }
+                          onValueChange={(userId) => handleAssignTicket(ticket.id, userId)}
                         >
                           <SelectTrigger className="w-40">
                             <SelectValue placeholder="Assign to..." />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {users
-                              .filter(user => user.designation === "IT" || user.is_admin)
-                              .map(user => (
-                                <SelectItem key={user.user_id} value={user.user_id}>
-                                  {user.name}
-                                </SelectItem>
-                              ))}
+                            {itUsers.map(user => (
+                              <SelectItem key={user.user_id} value={user.user_id}>
+                                {user.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -502,30 +505,50 @@ export default function ITManagement() {
         </TabsContent>
       </Tabs>
 
+      {/* Dialogs */}
       <CreateUserDialog
         open={showCreateUserDialog}
         onClose={() => setShowCreateUserDialog(false)}
-        onSuccess={() => {
-          setShowCreateUserDialog(false);
-          fetchUsers();
-        }}
+        onSuccess={fetchUsers}
       />
 
       {selectedUser && (
-        <EditUserDialog
-          open={showEditUserDialog}
-          onClose={() => {
-            setShowEditUserDialog(false);
-            setSelectedUser(null);
-          }}
-          user={selectedUser}
-          onSuccess={() => {
-            setShowEditUserDialog(false);
-            setSelectedUser(null);
-            fetchUsers();
-          }}
-        />
+        <>
+          <EditUserDialog
+            open={showEditUserDialog}
+            onClose={() => setShowEditUserDialog(false)}
+            user={selectedUser}
+            onSuccess={() => {
+              setShowEditUserDialog(false);
+              fetchUsers();
+            }}
+          />
+
+          <ResetPasswordDialog
+            open={showResetPasswordDialog}
+            onClose={() => setShowResetPasswordDialog(false)}
+            userEmail={selectedUser.email}
+          />
+
+          <UserActivityDialog
+            open={showUserActivityDialog}
+            onClose={() => setShowUserActivityDialog(false)}
+            userId={selectedUser.user_id}
+            userName={selectedUser.name}
+          />
+        </>
       )}
+
+      <BulkActionsDialog
+        open={showBulkActionsDialog}
+        onClose={() => setShowBulkActionsDialog(false)}
+        selectedTickets={selectedTickets}
+        onSuccess={() => {
+          setShowBulkActionsDialog(false);
+          setSelectedTickets([]);
+          fetchTickets();
+        }}
+      />
     </div>
   );
 }
