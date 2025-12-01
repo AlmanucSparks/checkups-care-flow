@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Ticket, Clock, AlertCircle, CheckCircle, Users, Search, Filter } from "lucide-react";
+import { Plus, Ticket, Clock, AlertCircle, CheckCircle, Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import CreateTicketDialog from "./CreateTicketDialog";
@@ -14,35 +14,42 @@ import { useToast } from "@/hooks/use-toast";
 export default function Dashboard() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin, isITStaff } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     if (user && profile) {
+      fetchProfiles();
       fetchTickets();
-      if (profile.is_admin || profile.designation === 'IT') {
+      if (isAdmin || isITStaff) {
         fetchUsers();
       }
     }
-  }, [user, profile]);
+  }, [user, profile, isAdmin, isITStaff]);
+
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("user_id, name");
+    if (data) {
+      const profileMap: Record<string, string> = {};
+      data.forEach(p => { profileMap[p.user_id] = p.name; });
+      setProfiles(profileMap);
+    }
+  };
 
   const fetchTickets = async () => {
     try {
       let query = supabase
         .from('tickets')
-        .select(`
-          *,
-          created_by_profile:profiles!tickets_created_by_fkey(name, designation, branch),
-          assigned_to_profile:profiles!tickets_assigned_to_fkey(name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (profile?.designation !== 'IT' && !profile?.is_admin) {
+      if (!isITStaff && !isAdmin) {
         query = query.eq('created_by', user?.id);
       }
 
@@ -69,15 +76,14 @@ export default function Dashboard() {
 
   const handleCreateTicket = async (ticketData: any) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tickets')
         .insert([{
           title: ticketData.title,
           description: ticketData.description,
           priority: ticketData.priority,
           created_by: user?.id
-        }])
-        .select();
+        }]);
 
       if (error) throw error;
       
@@ -147,40 +153,43 @@ export default function Dashboard() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Open": return <Clock className="h-4 w-4" />;
-      case "In Progress": return <AlertCircle className="h-4 w-4" />;
-      case "Resolved": case "Closed": return <CheckCircle className="h-4 w-4" />;
+      case "open": return <Clock className="h-4 w-4" />;
+      case "in_progress": return <AlertCircle className="h-4 w-4" />;
+      case "resolved": case "closed": return <CheckCircle className="h-4 w-4" />;
       default: return <Ticket className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Open": return "secondary";
-      case "In Progress": return "default";
-      case "Resolved": case "Closed": return "outline";
+      case "open": return "secondary";
+      case "in_progress": return "default";
+      case "resolved": case "closed": return "outline";
       default: return "secondary";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "Low": return "outline";
-      case "Medium": return "secondary";
-      case "High": case "Urgent": return "destructive";
+      case "low": return "outline";
+      case "medium": return "secondary";
+      case "high": case "urgent": return "destructive";
       default: return "secondary";
     }
   };
 
+  const formatStatus = (status: string) => {
+    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   const filteredTickets = tickets.filter(ticket => {
+    const creatorName = profiles[ticket.created_by] || '';
     const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.created_by_profile?.name.toLowerCase().includes(searchTerm.toLowerCase());
+      creatorName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
-
-  const isITOrAdmin = profile?.designation === 'IT' || profile?.is_admin;
 
   return (
     <div className="space-y-6">
@@ -188,17 +197,17 @@ export default function Dashboard() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-primary">
-            {isITOrAdmin ? 'IT Dashboard' : 'My Support Tickets'}
+            {isITStaff ? 'IT Dashboard' : 'My Support Tickets'}
           </h1>
           <p className="text-muted-foreground">
-            {isITOrAdmin 
+            {isITStaff 
               ? 'Manage all support requests across the organization'
               : 'View and manage your IT support requests'
             }
           </p>
         </div>
         <div className="flex space-x-2">
-          {profile?.is_admin && (
+          {isAdmin && (
             <Button 
               variant="outline" 
               onClick={() => setShowCreateUserDialog(true)}
@@ -233,7 +242,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {tickets.filter(t => t.status === "Open").length}
+              {tickets.filter(t => t.status === "open").length}
             </div>
           </CardContent>
         </Card>
@@ -244,7 +253,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {tickets.filter(t => t.status === "In Progress").length}
+              {tickets.filter(t => t.status === "in_progress").length}
             </div>
           </CardContent>
         </Card>
@@ -255,14 +264,14 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {tickets.filter(t => t.status === "Resolved").length}
+              {tickets.filter(t => t.status === "resolved").length}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      {isITOrAdmin && (
+      {isITStaff && (
         <Card>
           <CardHeader>
             <CardTitle>Filters</CardTitle>
@@ -283,10 +292,10 @@ export default function Dashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Resolved">Resolved</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -295,10 +304,10 @@ export default function Dashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Urgent">Urgent</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -311,7 +320,7 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle>Recent Tickets</CardTitle>
           <CardDescription>
-            {isITOrAdmin 
+            {isITStaff 
               ? 'All support tickets in the system'
               : 'Your support ticket history'
             }
@@ -338,23 +347,23 @@ export default function Dashboard() {
                     <div>
                       <h4 className="font-medium">{ticket.title}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Created by {ticket.created_by_profile?.name} • {new Date(ticket.created_at).toLocaleDateString()}
-                        {ticket.assigned_to_profile && ` • Assigned to ${ticket.assigned_to_profile.name}`}
+                        Created by {profiles[ticket.created_by] || 'Unknown'} • {new Date(ticket.created_at).toLocaleDateString()}
+                        {ticket.assigned_to && ` • Assigned to ${profiles[ticket.assigned_to] || 'Unknown'}`}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {isITOrAdmin && (
+                    {isITStaff && (
                       <>
                         <Select onValueChange={(value) => handleStatusChange(ticket.id, value)}>
                           <SelectTrigger className="w-32">
-                            <SelectValue placeholder={ticket.status} />
+                            <SelectValue placeholder={formatStatus(ticket.status)} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Open">Open</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
-                            <SelectItem value="Resolved">Resolved</SelectItem>
-                            <SelectItem value="Closed">Closed</SelectItem>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="resolved">Resolved</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
                           </SelectContent>
                         </Select>
                         {!ticket.assigned_to && (
@@ -374,10 +383,10 @@ export default function Dashboard() {
                       </>
                     )}
                     <Badge variant={getPriorityColor(ticket.priority)}>
-                      {ticket.priority}
+                      {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                     </Badge>
                     <Badge variant={getStatusColor(ticket.status)}>
-                      {ticket.status}
+                      {formatStatus(ticket.status)}
                     </Badge>
                   </div>
                 </div>
@@ -393,7 +402,7 @@ export default function Dashboard() {
         onSubmit={handleCreateTicket}
       />
 
-      {profile?.is_admin && (
+      {isAdmin && (
         <CreateUserDialog 
           open={showCreateUserDialog}
           onClose={() => setShowCreateUserDialog(false)}

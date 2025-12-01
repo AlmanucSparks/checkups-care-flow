@@ -10,13 +10,14 @@ interface Profile {
   email: string;
   designation: string;
   branch: string;
-  is_admin: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
+  isAdmin: boolean;
+  isITStaff: boolean;
   signUp: (email: string, password: string, name: string, designation: string, branch: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -29,6 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isITStaff, setIsITStaff] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -42,9 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Defer profile fetching to avoid deadlock
           setTimeout(async () => {
             await fetchProfile(session.user.id);
+            await fetchRoles(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
+          setIsITStaff(false);
         }
       }
     );
@@ -55,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchRoles(session.user.id);
       }
     });
 
@@ -77,6 +84,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
+    }
+  };
+
+  const fetchRoles = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching roles:', error);
+        return;
+      }
+
+      const roles = data?.map(r => r.role) || [];
+      setIsAdmin(roles.includes('admin'));
+      setIsITStaff(roles.includes('it_staff') || roles.includes('admin'));
+    } catch (error) {
+      console.error('Error fetching roles:', error);
     }
   };
 
@@ -109,10 +136,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setIsAdmin(false);
+    setIsITStaff(false);
   };
 
-  const createUserByAdmin = async (email: string, password: string, name: string, designation: string, branch: string, isAdmin = false) => {
-    if (!profile?.is_admin) {
+  const createUserByAdmin = async (email: string, password: string, name: string, designation: string, branch: string, makeAdmin = false) => {
+    if (!isAdmin) {
       return { error: { message: 'Unauthorized: Only admins can create users' } };
     }
 
@@ -124,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name,
           designation,
           branch,
-          is_admin: isAdmin
+          is_admin: makeAdmin
         }
       }
     });
@@ -144,6 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       session,
+      isAdmin,
+      isITStaff,
       signUp,
       signIn,
       signOut,

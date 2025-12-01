@@ -21,12 +21,8 @@ interface Ticket {
   updated_at: string;
   created_by: string;
   assigned_to: string | null;
-  creator?: {
-    name: string;
-  };
-  assignee?: {
-    name: string;
-  };
+  creator_name?: string;
+  assignee_name?: string;
 }
 
 interface Stats {
@@ -39,9 +35,10 @@ interface Stats {
 }
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin, isITStaff } = useAuth();
   const { toast } = useToast();
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [stats, setStats] = useState<Stats>({
     total: 0,
     open: 0,
@@ -57,24 +54,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
+      fetchProfiles();
       fetchTickets();
     }
-  }, [user]);
+  }, [user, isAdmin, isITStaff]);
+
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("user_id, name");
+    if (data) {
+      const profileMap: Record<string, string> = {};
+      data.forEach(p => { profileMap[p.user_id] = p.name; });
+      setProfiles(profileMap);
+    }
+  };
 
   const fetchTickets = async () => {
     if (!user) return;
 
     try {
-      let query = supabase
-        .from("tickets")
-        .select(`
-          *,
-          creator:profiles!tickets_created_by_fkey(name),
-          assignee:profiles!tickets_assigned_to_fkey(name)
-        `);
+      let query = supabase.from("tickets").select("*");
 
-      // Non-admin users can only see their own tickets
-      if (profile?.designation !== "IT" && !profile?.is_admin) {
+      // Non-admin/IT users can only see their own tickets
+      if (!isITStaff && !isAdmin) {
         query = query.eq("created_by", user.id);
       }
 
@@ -82,7 +83,14 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      setTickets(data || []);
+      // Map profile names to tickets
+      const ticketsWithNames = (data || []).map(ticket => ({
+        ...ticket,
+        creator_name: profiles[ticket.created_by] || 'Unknown',
+        assignee_name: ticket.assigned_to ? profiles[ticket.assigned_to] : null
+      }));
+
+      setTickets(ticketsWithNames);
       
       // Calculate stats
       const allTickets = data || [];
@@ -90,10 +98,10 @@ export default function Dashboard() {
       
       setStats({
         total: allTickets.length,
-        open: allTickets.filter(t => t.status === "Open").length,
-        inProgress: allTickets.filter(t => t.status === "In Progress").length,
-        resolved: allTickets.filter(t => t.status === "Resolved").length,
-        highPriority: allTickets.filter(t => t.priority === "High").length,
+        open: allTickets.filter(t => t.status === "open").length,
+        inProgress: allTickets.filter(t => t.status === "in_progress").length,
+        resolved: allTickets.filter(t => t.status === "resolved").length,
+        highPriority: allTickets.filter(t => t.priority === "high" || t.priority === "urgent").length,
         myTickets: myTickets.length,
       });
     } catch (error: any) {
@@ -104,6 +112,13 @@ export default function Dashboard() {
       });
     }
   };
+
+  // Re-fetch tickets when profiles change
+  useEffect(() => {
+    if (Object.keys(profiles).length > 0 && user) {
+      fetchTickets();
+    }
+  }, [profiles]);
 
   const handleCreateTicket = async (ticketData: any) => {
     if (!user) return;
@@ -155,7 +170,7 @@ export default function Dashboard() {
 
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         (ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
     
@@ -164,29 +179,34 @@ export default function Dashboard() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Open": return <AlertCircle className="h-4 w-4" />;
-      case "In Progress": return <Clock className="h-4 w-4" />;
-      case "Resolved": return <CheckCircle className="h-4 w-4" />;
+      case "open": return <AlertCircle className="h-4 w-4" />;
+      case "in_progress": return <Clock className="h-4 w-4" />;
+      case "resolved": return <CheckCircle className="h-4 w-4" />;
       default: return <AlertCircle className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Open": return "destructive";
-      case "In Progress": return "default";
-      case "Resolved": return "secondary";
+      case "open": return "destructive";
+      case "in_progress": return "default";
+      case "resolved": return "secondary";
       default: return "outline";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "High": return "destructive";
-      case "Medium": return "default";
-      case "Low": return "secondary";
+      case "high": 
+      case "urgent": return "destructive";
+      case "medium": return "default";
+      case "low": return "secondary";
       default: return "outline";
     }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (
@@ -204,7 +224,7 @@ export default function Dashboard() {
             <Plus className="h-4 w-4 mr-2" />
             New Ticket
           </Button>
-          {(profile?.designation === "IT" || profile?.is_admin) && (
+          {isITStaff && (
             <Button variant="outline" asChild>
               <Link to="/it-management">
                 <Users className="h-4 w-4 mr-2" />
@@ -300,7 +320,7 @@ export default function Dashboard() {
           </div>
         </Button>
 
-        {(profile?.designation === "IT" || profile?.is_admin) && (
+        {isITStaff && (
           <Button variant="outline" className="h-20" asChild>
             <Link to="/it-management">
               <div className="text-center">
@@ -317,7 +337,7 @@ export default function Dashboard() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>Recent Tickets</CardTitle>
-            {(profile?.designation === "IT" || profile?.is_admin) && (
+            {isITStaff && (
               <div className="flex gap-2 items-center">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -334,9 +354,10 @@ export default function Dashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="Open">Open</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Resolved">Resolved</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -345,9 +366,10 @@ export default function Dashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Priority</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -364,19 +386,19 @@ export default function Dashboard() {
                   <div className="flex gap-2">
                     <Badge variant={getStatusColor(ticket.status)}>
                       {getStatusIcon(ticket.status)}
-                      <span className="ml-1">{ticket.status}</span>
+                      <span className="ml-1">{formatStatus(ticket.status)}</span>
                     </Badge>
                     <Badge variant={getPriorityColor(ticket.priority)}>
-                      {ticket.priority}
+                      {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                     </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Created by {ticket.creator?.name} • {new Date(ticket.created_at).toLocaleDateString()}
-                    {ticket.assignee && ` • Assigned to ${ticket.assignee.name}`}
+                    Created by {profiles[ticket.created_by] || 'Unknown'} • {new Date(ticket.created_at).toLocaleDateString()}
+                    {ticket.assigned_to && ` • Assigned to ${profiles[ticket.assigned_to] || 'Unknown'}`}
                   </div>
                 </div>
                 
-                {(profile?.designation === "IT" || profile?.is_admin) && (
+                {isITStaff && (
                   <Select
                     value={ticket.status}
                     onValueChange={(status) => handleStatusChange(ticket.id, status)}
@@ -385,9 +407,10 @@ export default function Dashboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Open">Open</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Resolved">Resolved</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
