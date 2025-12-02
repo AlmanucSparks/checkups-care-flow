@@ -18,6 +18,7 @@ import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import LiveActivityFeed from "@/components/LiveActivityFeed";
 import QuickActionsPanel from "@/components/QuickActionsPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getPersonName } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -39,12 +40,8 @@ interface Ticket {
   created_at: string;
   created_by: string;
   assigned_to: string | null;
-  creator?: {
-    name: string;
-  };
-  assignee?: {
-    name: string;
-  };
+  creator?: { name: string } | { name: string }[];
+  assignee?: { name: string } | { name: string }[];
 }
 
 export default function ITManagement() {
@@ -450,8 +447,8 @@ export default function ITManagement() {
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          <p>Created by: {ticket.creator?.name}</p>
-                          {ticket.assignee && <p>Assigned to: {ticket.assignee.name}</p>}
+                          <p>Created by: {getPersonName(ticket.creator)}</p>
+                          {ticket.assignee && <p>Assigned to: {getPersonName(ticket.assignee)}</p>}
                         </div>
                       </div>
                       <div className="flex gap-2">

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, MessageCircle, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import CreateTicketDialog from "@/components/CreateTicketDialog";
+import { getPersonName } from "@/lib/utils";
 
 interface Ticket {
   id: string;
@@ -18,9 +19,7 @@ interface Ticket {
   created_at: string;
   updated_at: string;
   assigned_to: string | null;
-  assignee?: {
-    name: string;
-  };
+  assignee?: { name: string } | { name: string }[];
 }
 
 interface Comment {
@@ -28,9 +27,7 @@ interface Comment {
   message: string;
   created_at: string;
   author_id: string;
-  author?: {
-    name: string;
-  };
+  author?: { name: string } | { name: string }[];
 }
 
 export default function MyTickets() {
@@ -223,20 +220,19 @@ export default function MyTickets() {
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>Created: {new Date(ticket.created_at).toLocaleDateString()}</p>
                 <p>Updated: {new Date(ticket.updated_at).toLocaleDateString()}</p>
-                {ticket.assignee && (
-                  <p>Assigned to: {ticket.assignee.name}</p>
-                )}
+                <p>Assigned to: {getPersonName(ticket.assignee)}</p>
               </div>
 
               {selectedTicket === ticket.id && (
                 <div className="mt-4 border-t pt-4">
                   <h4 className="font-medium mb-3">Comments</h4>
                   <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {!comments[ticket.id] && <p>Loading comments...</p>}
                     {comments[ticket.id]?.map((comment) => (
                       <div key={comment.id} className="bg-muted p-3 rounded-lg">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-medium text-sm">
-                            {comment.author?.name || 'Unknown'}
+                            {getPersonName(comment.author) || "Unknown"}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(comment.created_at).toLocaleDateString()}
