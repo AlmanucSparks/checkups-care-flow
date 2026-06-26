@@ -83,11 +83,20 @@ export default function EditUserDialog({ open, onClose, user, onSuccess }: EditU
           email: formData.email,
           designation: formData.designation,
           branch: formData.branch,
-          is_admin: formData.is_admin,
         })
         .eq("id", user.id);
 
       if (error) throw error;
+
+      // Sync admin role in user_roles
+      if (formData.is_admin) {
+        await supabase.from("user_roles").upsert(
+          { user_id: user.user_id, role: "admin" },
+          { onConflict: "user_id,role" }
+        );
+      } else {
+        await supabase.from("user_roles").delete().eq("user_id", user.user_id).eq("role", "admin");
+      }
 
       toast({
         title: "Success",
