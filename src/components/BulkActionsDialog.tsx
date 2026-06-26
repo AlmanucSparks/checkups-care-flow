@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,17 +22,23 @@ export default function BulkActionsDialog({ open, onClose, selectedTickets, onSu
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useState(() => {
+  useEffect(() => {
     if (open) {
       fetchITUsers();
     }
   }, [open]);
 
   const fetchITUsers = async () => {
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
+    const adminIds = (roles || []).map((r: any) => r.user_id);
+
     const { data, error } = await supabase
       .from('profiles')
-      .select('user_id, name')
-      .or('designation.eq.IT,is_admin.eq.true');
+      .select('user_id, name, designation')
+      .or(`designation.eq.IT${adminIds.length ? `,user_id.in.(${adminIds.join(',')})` : ''}`);
 
     if (!error) {
       setUsers(data || []);

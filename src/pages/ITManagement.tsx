@@ -93,7 +93,9 @@ export default function ITManagement() {
         variant: "destructive",
       });
     } else {
-      setUsers(data || []);
+      const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+      const adminIds = new Set((roles || []).filter((r: any) => r.role === "admin").map((r: any) => r.user_id));
+      setUsers((data || []).map((u: any) => ({ ...u, is_admin: adminIds.has(u.user_id) })));
     }
   };
 

@@ -67,14 +67,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
         return;
       }
+      if (!data) return;
 
-      setProfile(data);
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      const isAdmin = (roles || []).some((r: any) => r.role === 'admin');
+      setProfile({ ...data, is_admin: isAdmin });
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
