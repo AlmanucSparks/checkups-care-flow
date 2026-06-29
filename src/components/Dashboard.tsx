@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import CreateTicketDialog from "./CreateTicketDialog";
 import CreateUserDialog from "./CreateUserDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
